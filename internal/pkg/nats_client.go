@@ -312,3 +312,93 @@ func (nc *NATSConnection) GetStreamInfo(stream string) (*nats.StreamInfo, error)
 
 	return streamInfo, nil
 }
+
+// StreamConfig represents the configuration for creating a new NATS stream
+type StreamConfig struct {
+	Name         string   `json:"name" binding:"required"`
+	Subjects     []string `json:"subjects" binding:"required"`
+	Storage      string   `json:"storage"`   // "file" or "memory"
+	Retention    string   `json:"retention"` // "limits", "interest", or "workqueue"
+	Discard      string   `json:"discard"`   // "old" or "new"
+	NumReplicas  int      `json:"num_replicas"`
+	AllowDirect  bool     `json:"allow_direct"`
+	AllowMsgTTL  bool     `json:"allow_msg_ttl"`
+	MaxMsgs      int64    `json:"max_msgs"`
+	MaxBytes     int64    `json:"max_bytes"`
+	MaxAge       int64    `json:"max_age"` // nanoseconds
+	MaxConsumers int      `json:"max_consumers"`
+}
+
+func (nc *NATSConnection) CreateStream(config *StreamConfig) (*nats.StreamInfo, error) {
+	if nc.Conn == nil || !nc.Conn.IsConnected() {
+		return nil, fmt.Errorf("not connected to NATS server")
+	}
+
+	if nc.JSConn == nil {
+		return nil, fmt.Errorf("not connected to JetStream")
+	}
+
+	js := *nc.JSConn
+
+	// Convert our config to NATS StreamConfig
+	streamConfig := &nats.StreamConfig{
+		Name:        config.Name,
+		Subjects:    config.Subjects,
+		Replicas:    config.NumReplicas,
+		AllowDirect: config.AllowDirect,
+	}
+
+	// Set storage type
+	switch config.Storage {
+	case "file":
+		streamConfig.Storage = nats.FileStorage
+	case "memory":
+		streamConfig.Storage = nats.MemoryStorage
+	default:
+		streamConfig.Storage = nats.FileStorage // default to file storage
+	}
+
+	// Set retention policy
+	switch config.Retention {
+	case "limits":
+		streamConfig.Retention = nats.LimitsPolicy
+	case "interest":
+		streamConfig.Retention = nats.InterestPolicy
+	case "workqueue":
+		streamConfig.Retention = nats.WorkQueuePolicy
+	default:
+		streamConfig.Retention = nats.LimitsPolicy // default to limits
+	}
+
+	// Set discard policy
+	switch config.Discard {
+	case "old":
+		streamConfig.Discard = nats.DiscardOld
+	case "new":
+		streamConfig.Discard = nats.DiscardNew
+	default:
+		streamConfig.Discard = nats.DiscardOld // default to discard old
+	}
+
+	// Set limits (handle negative values as unlimited)
+	if config.MaxMsgs > 0 {
+		streamConfig.MaxMsgs = config.MaxMsgs
+	}
+	if config.MaxBytes > 0 {
+		streamConfig.MaxBytes = config.MaxBytes
+	}
+	if config.MaxAge > 0 {
+		streamConfig.MaxAge = time.Duration(config.MaxAge)
+	}
+	if config.MaxConsumers > 0 {
+		streamConfig.MaxConsumers = config.MaxConsumers
+	}
+
+	// Create the stream
+	streamInfo, err := js.AddStream(streamConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create stream: %w", err)
+	}
+
+	return streamInfo, nil
+}

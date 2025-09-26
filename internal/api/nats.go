@@ -254,4 +254,67 @@ func (e *HeyNats) RegisterRoutes() {
 			"total":   len(streams),
 		})
 	})
+
+	api.POST("/api/nats/streams", func(c *gin.Context) {
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":     "Not connected to NATS server",
+				"connected": false,
+			})
+			return
+		}
+
+		var config pkg.StreamConfig
+		if err := c.ShouldBindJSON(&config); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "Invalid stream configuration",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		// Validate required fields
+		if config.Name == "" {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Stream name is required",
+			})
+			return
+		}
+
+		if len(config.Subjects) == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "At least one subject is required",
+			})
+			return
+		}
+
+		// Set defaults if not provided
+		if config.NumReplicas == 0 {
+			config.NumReplicas = 1
+		}
+		if config.Storage == "" {
+			config.Storage = "file"
+		}
+		if config.Retention == "" {
+			config.Retention = "limits"
+		}
+		if config.Discard == "" {
+			config.Discard = "old"
+		}
+
+		// Create the stream
+		streamInfo, err := e.natsConn.CreateStream(&config)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to create stream",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"message":     "Stream created successfully",
+			"stream_info": streamInfo,
+		})
+	})
 }

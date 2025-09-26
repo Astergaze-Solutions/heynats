@@ -15,10 +15,10 @@ export function CreateStreamModal({ isOpen, onClose, onSubmit, isLoading = false
     subjects: '',
     storage: 'file' as 'file' | 'memory',
     retention: 'limits' as 'limits' | 'interest' | 'workqueue',
-    max_msgs: '',
-    max_bytes: '',
-    max_age: '',
-    max_consumers: '',
+    max_msgs: '-1',
+    max_bytes: '-1',
+    max_age: '-1',
+    max_consumers: '-1',
     num_replicas: 1,
     discard: 'old' as 'old' | 'new',
     allow_direct: true,
@@ -207,7 +207,7 @@ export function CreateStreamModal({ isOpen, onClose, onSubmit, isLoading = false
                   onChange={(e) => setFormData({ ...formData, max_msgs: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="No limit"
-                  min="1"
+                  min="-1"
                   disabled={isLoading}
                 />
               </div>
@@ -222,7 +222,7 @@ export function CreateStreamModal({ isOpen, onClose, onSubmit, isLoading = false
                   onChange={(e) => setFormData({ ...formData, max_bytes: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="No limit"
-                  min="1"
+                  min="-1"
                   disabled={isLoading}
                 />
               </div>
@@ -237,7 +237,7 @@ export function CreateStreamModal({ isOpen, onClose, onSubmit, isLoading = false
                   onChange={(e) => setFormData({ ...formData, max_age: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="No limit"
-                  min="1"
+                  min="-1"
                   disabled={isLoading}
                 />
               </div>
@@ -252,7 +252,7 @@ export function CreateStreamModal({ isOpen, onClose, onSubmit, isLoading = false
                   onChange={(e) => setFormData({ ...formData, max_consumers: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="No limit"
-                  min="1"
+                  min="-1"
                   disabled={isLoading}
                 />
               </div>
