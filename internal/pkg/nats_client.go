@@ -138,8 +138,8 @@ func (nc *NATSConnection) GetAccountInfo() (*AccountInfo, error) {
 	if err := json.Unmarshal(resp.Data, &accountData); err == nil {
 		return &AccountInfo{
 			AccountInformation: nc.infoAction(),
-			ConnectionLimits:   accountData,
-			Stats:              accountData,
+			ConnectionLimits:   accountData["data"].(map[string]interface{}),
+			Stats:              accountData["data"].(map[string]interface{}),
 		}, nil
 	}
 

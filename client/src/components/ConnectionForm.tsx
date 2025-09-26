@@ -1,16 +1,10 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
+import type { ConnectionCredentials } from "../lib/api";
 
 interface ConnectionFormProps {
   onConnect: (credentials: ConnectionCredentials) => Promise<void>;
   isLoading: boolean;
-}
-
-export interface ConnectionCredentials {
-  host: string;
-  port: string;
-  username: string;
-  password: string;
 }
 
 export function ConnectionForm({ onConnect, isLoading }: ConnectionFormProps) {
