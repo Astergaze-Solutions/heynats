@@ -1,0 +1,64 @@
+# Lefthook configuration for heynats project
+# Go backend + React frontend setup
+#
+# Refer for explanation to following link:
+# https://lefthook.dev/configuration/
+
+pre-commit:
+  parallel: true
+  commands:
+    # Frontend linting and formatting with Biome
+    frontend-biome:
+      glob: "client/**/*.{js,ts,jsx,tsx,json,jsonc}"
+      run: cd client && npx biome@2.2.2 check --write --diagnostic-level=error {staged_files} && git add {staged_files}
+      stage_fixed: true
+    
+    # Go formatting
+    go-fmt:
+      glob: "*.go"
+      run: gofmt -s -w {staged_files} && git add {staged_files}
+      stage_fixed: true
+    
+    # Go imports
+    go-imports:
+      glob: "*.go"
+      run: goimports -w {staged_files} && git add {staged_files}
+      stage_fixed: true
+    
+    # Go vet
+    go-vet:
+      glob: "*.go"
+      run: go vet ./...
+    
+    # Go mod tidy
+    go-mod-tidy:
+      glob: "go.{mod,sum}"
+      run: go mod tidy
+
+pre-push:
+  parallel: true
+  commands:
+    # Go linting with golangci-lint
+    go-lint:
+      glob: "*.go"
+      run: golangci-lint run ./...
+    
+    # Go tests
+    go-test:
+      glob: "*.go"
+      run: go test -v ./...
+    
+    # Frontend type checking
+    frontend-typecheck:
+      glob: "client/**/*.{ts,tsx}"
+      run: cd client && npx tsc --noEmit
+    
+    # Frontend build check
+    frontend-build:
+      glob: "client/**/*.{js,ts,jsx,tsx,json,html,css}"
+      run: cd client && npm run build
+
+commit-msg:
+  commands:
+    commitlint:
+      run: commitlint --edit {1}

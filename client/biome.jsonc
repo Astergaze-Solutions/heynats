@@ -1,0 +1,91 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noArrayIndexKey": "off",
+        "useIterableCallbackReturn": "warn"
+      },
+      "a11y": {
+        "useKeyWithClickEvents": "off",
+        "noSvgWithoutTitle": "warn"
+      },
+      "complexity": {
+        "noForEach": "off",
+        "useLiteralKeys": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "off",
+        // allow nested component definitions for better useMemo and useCallback usage
+        "noNestedComponentDefinitions": "off",
+        // warn if unique id is not being used properly
+        "useUniqueElementIds": "warn",
+        // allow nested hooks
+        "useHookAtTopLevel": "off",
+        "noInvalidUseBeforeDeclaration": "warn"
+      },
+      "style": {
+        "noUselessElse": "off",
+        "noParameterAssign": "warn",
+        "useAsConstAssertion": "error",
+        "useDefaultParameterLast": "error",
+        "useEnumInitializers": "error",
+        "useSelfClosingElements": "error",
+        "useSingleVarDeclarator": "error",
+        "noUnusedTemplateLiteral": "error",
+        "useNumberNamespace": "error",
+        "noInferrableTypes": "error"
+      },
+      "performance": {
+        "noAccumulatingSpread": "off"
+      }
+    }
+  },
+  "files": {
+    "includes": [
+      "**/src/**/*.js",
+      "**/src/**/*.ts",
+      "**/src/**/*.jsx",
+      "**/src/**/*.tsx",
+      "**/app/**/*.js",
+      "**/app/**/*.ts",
+      "**/app/**/*.jsx",
+      "**/app/**/*.tsx",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/public",
+      "!**/build",
+      "!**/.turbo",
+      "!**/bun.lock",
+      "!**/components/ui",
+      "commitlint.config.js"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "lineEnding": "lf",
+    "indentWidth": 2
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "trailingCommas": "es5"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+version: v0.9.0
+formatter: default
+rules:
+- header-min-length
+- header-max-length
+- body-max-line-length
+- footer-max-line-length
+- type-enum
+severity:
+  default: error
+settings:
+  body-max-line-length:
+    argument: 150
+  footer-max-line-length:
+    argument: 72
+  header-min-length:
+    argument: 10
+  header-max-length:
+    argument: 150
+  type-enum:
+    argument:
+    - feat
+    - fix
+    - docs
+    - style
+    - refactor
+    - perf
+    - test
+    - build
+    - ci
+    - chore
+    - revert
