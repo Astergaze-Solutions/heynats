@@ -1,10 +1,15 @@
 package pkg
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/astergaze-solutions/heynats/internal/util"
+	"github.com/dustin/go-humanize"
+	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
 
@@ -31,9 +36,10 @@ type NATSInfo struct {
 }
 
 type AccountInfo struct {
-	ConnectionLimits map[string]interface{} `json:"connection_limits"`
-	Stats            map[string]interface{} `json:"stats"`
-	JetStreamInfo    *JSAccountInfo         `json:"jetstream_info,omitempty"`
+	AccountInformation map[string]interface{} `json:"account_information"`
+	ConnectionLimits   map[string]interface{} `json:"connection_limits"`
+	Stats              map[string]interface{} `json:"stats"`
+	JetStreamInfo      *JSAccountInfo         `json:"jetstream_info,omitempty"`
 }
 
 type JSAccountInfo struct {
@@ -116,6 +122,7 @@ func (nc *NATSConnection) GetAccountInfo() (*AccountInfo, error) {
 	if err != nil {
 		// If system requests are not available, return basic info
 		return &AccountInfo{
+			AccountInformation: nc.infoAction(),
 			ConnectionLimits: map[string]interface{}{
 				"max_connections":   "N/A",
 				"max_subscriptions": "N/A",
@@ -130,14 +137,16 @@ func (nc *NATSConnection) GetAccountInfo() (*AccountInfo, error) {
 	var accountData map[string]interface{}
 	if err := json.Unmarshal(resp.Data, &accountData); err == nil {
 		return &AccountInfo{
-			ConnectionLimits: accountData,
-			Stats:            accountData,
+			AccountInformation: nc.infoAction(),
+			ConnectionLimits:   accountData,
+			Stats:              accountData,
 		}, nil
 	}
 
 	// Return basic connection info if system requests fail
 	stats := nc.Conn.Stats()
 	return &AccountInfo{
+		AccountInformation: nc.infoAction(),
 		ConnectionLimits: map[string]interface{}{
 			"max_connections": "N/A",
 		},
@@ -159,4 +168,84 @@ func (nc *NATSConnection) TestConnection() error {
 
 	// Test with a simple RTT measurement
 	return nc.Conn.FlushTimeout(2 * time.Second)
+}
+
+func (nc *NATSConnection) infoAction() map[string]any {
+
+	id, _ := nc.Conn.GetClientID()
+	ip, _ := nc.Conn.GetClientIP()
+	lip := nc.Conn.LocalAddr()
+	rtt, _ := nc.Conn.RTT()
+	tlsc, _ := nc.Conn.TLSConnectionState()
+
+	var ui *server.UserInfo
+	if util.ServerMinVersion(nc.Conn, 2, 10, 0) {
+		subj := "$SYS.REQ.USER.INFO"
+		resp, err := nc.Conn.Request(subj, nil, time.Second)
+		if err == nil {
+			var res = struct {
+				Data   *server.UserInfo  `json:"data"`
+				Server server.ServerInfo `json:"server"`
+				Error  *server.ApiError  `json:"error"`
+			}{}
+
+			err = json.Unmarshal(resp.Data, &res)
+			if err == nil && res.Error == nil {
+				ui = res.Data
+			}
+		}
+	}
+
+	accountInfo := map[string]any{
+		"user":             ui.UserID,
+		"account":          ui.Account,
+		"expires":          ui.Expires,
+		"permissions":      ui.Permissions,
+		"client_id":        id,
+		"client_ip":        ip,
+		"rtt":              rtt.String(),
+		"header_supported": nc.Conn.HeadersSupported(),
+		"max_payload":      humanize.IBytes(uint64(nc.Conn.MaxPayload())),
+		"connected_url":    nc.Conn.ConnectedUrl(),
+		"connected_addr":   nc.Conn.ConnectedAddr(),
+		"server_id":        nc.Conn.ConnectedServerId(),
+		"server_version":   nc.Conn.ConnectedServerVersion(),
+		"server_name":      nc.Conn.ConnectedServerName(),
+	}
+	if ui.Expires == 0 {
+		accountInfo["expires"] = "never"
+	}
+	if lip != "" && !strings.HasPrefix(lip, ip.String()) {
+		accountInfo["local_ip"] = lip
+	}
+
+	if tlsc.HandshakeComplete {
+		version := ""
+		switch tlsc.Version {
+		case tls.VersionTLS10:
+			version = "1.0"
+		case tls.VersionTLS11:
+			version = "1.1"
+		case tls.VersionTLS12:
+			version = "1.2"
+		case tls.VersionTLS13:
+			version = "1.3"
+		default:
+			version = fmt.Sprintf("unknown (%x)", tlsc.Version)
+		}
+
+		accountInfo["tls_version"] = fmt.Sprintf("%s using %s", version, tls.CipherSuiteName(tlsc.CipherSuite))
+		accountInfo["tls_server_name"] = tlsc.ServerName
+		if len(tlsc.VerifiedChains) > 0 {
+			accountInfo["tls_verified"] = fmt.Sprintf("issuer %s", tlsc.PeerCertificates[0].Issuer.String())
+		} else {
+			accountInfo["tls_verified"] = "no"
+		}
+	}
+
+	if ui != nil && ui.Permissions != nil {
+		accountInfo["permissions"] = ui.Permissions
+	}
+
+	return accountInfo
 }

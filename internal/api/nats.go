@@ -88,6 +88,27 @@ func (e *HeyNats) RegisterRoutes() {
 		c.JSON(http.StatusOK, info)
 	})
 
+	api.GET("/api/nats/account/info", func(c *gin.Context) {
+		if e.globalNATSConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":     "Not connected to NATS server",
+				"connected": false,
+			})
+			return
+		}
+
+		accountInfo, err := e.globalNATSConn.GetAccountInfo()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to get account information",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, accountInfo)
+	})
+
 	api.GET("/api/nats/account", func(c *gin.Context) {
 		if e.globalNATSConn == nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
