@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { natsApi, type ConnectionCredentials } from '../lib/api';
+import { natsApi, ConnectionCredentials } from '../lib/api';
+import { showErrorToast, showSuccessToast } from '../lib/error-utils';
 
 // Query keys
 export const queryKeys = {
@@ -57,9 +58,11 @@ export function useConnectToNATS() {
       queryClient.invalidateQueries({ queryKey: queryKeys.nats.status() });
       // Invalidate other NATS queries to trigger refetch when enabled
       queryClient.invalidateQueries({ queryKey: queryKeys.nats.all });
+      showSuccessToast('Connected to NATS server successfully!', 'All NATS features are now available');
     },
     onError: (error) => {
       console.error('Connection failed:', error);
+      showErrorToast('connect to NATS server', error, 'Failed to connect to NATS server. Please check your credentials.');
     },
   });
 }
@@ -75,9 +78,11 @@ export function useDisconnectFromNATS() {
       queryClient.setQueryData(queryKeys.nats.status(), { connected: false });
       // Invalidate all NATS-related queries
       queryClient.invalidateQueries({ queryKey: queryKeys.nats.all });
+      showSuccessToast('Disconnected from NATS server', 'Connection closed successfully');
     },
     onError: (error) => {
       console.error('Disconnect failed:', error);
+      showErrorToast('disconnect from NATS server', error, 'Failed to disconnect from NATS server');
       // Even if disconnect API fails, update local state
       queryClient.setQueryData(queryKeys.nats.status(), { connected: false });
     },

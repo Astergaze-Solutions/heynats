@@ -6,6 +6,7 @@ import { StreamCard } from '../components/StreamCard';
 import { CreateStreamModal } from '../components/CreateStreamModal';
 import { Button } from '../components/ui/button';
 import { StatsCard } from '../components/StatsCard';
+import { showErrorToast, showSuccessToast } from '../lib/error-utils';
 
 export function StreamsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -32,10 +33,11 @@ export function StreamsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['streams'] });
       setIsCreateModalOpen(false);
+      showSuccessToast('Stream created successfully!', 'The new stream is now available for publishing messages');
     },
     onError: (error) => {
       console.error('Failed to create stream:', error);
-      // You could add a toast notification here
+      showErrorToast('create stream', error, 'Failed to create stream. Please try again.');
     },
   });
 
@@ -44,10 +46,11 @@ export function StreamsPage() {
     mutationFn: streamsApi.deleteStream,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['streams'] });
+      showSuccessToast('Stream deleted successfully!', 'All associated messages and consumers have been removed');
     },
     onError: (error) => {
       console.error('Failed to delete stream:', error);
-      // You could add a toast notification here
+      showErrorToast('delete stream', error, 'Failed to delete stream. Please try again.');
     },
   });
 

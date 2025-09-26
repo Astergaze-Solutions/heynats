@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StreamConfig } from '../lib/api';
 import { Button } from './ui/button';
+import { TagInput } from './ui/tag-input';
 
 interface CreateStreamModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface CreateStreamModalProps {
 export function CreateStreamModal({ isOpen, onClose, onSubmit, isLoading = false }: CreateStreamModalProps) {
   const [formData, setFormData] = useState({
     name: '',
-    subjects: '',
+    subjects: [] as string[],
     storage: 'file' as 'file' | 'memory',
     retention: 'limits' as 'limits' | 'interest' | 'workqueue',
     max_msgs: '-1',
@@ -27,6 +28,18 @@ export function CreateStreamModal({ isOpen, onClose, onSubmit, isLoading = false
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const handleSubjectsChange = (subjects: string[]) => {
+    setFormData({
+      ...formData,
+      subjects
+    });
+    // Clear subject error if it exists
+    if (errors.subjects) {
+      const { subjects: _, ...restErrors } = errors;
+      setErrors(restErrors);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -39,7 +52,7 @@ export function CreateStreamModal({ isOpen, onClose, onSubmit, isLoading = false
       newErrors.name = 'Stream name can only contain letters, numbers, underscores, and hyphens';
     }
 
-    if (!formData.subjects.trim()) {
+    if (formData.subjects.length === 0) {
       newErrors.subjects = 'At least one subject is required';
     }
 
@@ -51,7 +64,7 @@ export function CreateStreamModal({ isOpen, onClose, onSubmit, isLoading = false
     // Prepare config
     const config: Partial<StreamConfig> = {
       name: formData.name,
-      subjects: formData.subjects.split(',').map(s => s.trim()).filter(s => s),
+      subjects: formData.subjects,
       storage: formData.storage,
       retention: formData.retention,
       discard: formData.discard,
@@ -79,13 +92,14 @@ export function CreateStreamModal({ isOpen, onClose, onSubmit, isLoading = false
       handleClose();
     } catch (error) {
       console.error('Failed to create stream:', error);
+      // Error toast is handled by the parent component's mutation
     }
   };
 
   const handleClose = () => {
     setFormData({
       name: '',
-      subjects: '',
+      subjects: [],
       storage: 'file',
       retention: 'limits',
       max_msgs: '',
@@ -144,18 +158,16 @@ export function CreateStreamModal({ isOpen, onClose, onSubmit, isLoading = false
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Subjects *
               </label>
-              <input
-                type="text"
+              <TagInput
                 value={formData.subjects}
-                onChange={(e) => setFormData({ ...formData, subjects: e.target.value })}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.subjects ? 'border-red-300' : 'border-gray-300'
-                }`}
-                placeholder="orders.created, orders.updated, orders.*"
+                onChange={handleSubjectsChange}
+                placeholder="Enter subject (e.g., orders.created, orders.*)"
                 disabled={isLoading}
+                error={errors.subjects}
               />
-              <p className="text-gray-500 text-sm mt-1">Comma-separated list of subjects</p>
-              {errors.subjects && <p className="text-red-500 text-sm mt-1">{errors.subjects}</p>}
+              <p className="text-gray-500 text-sm mt-1">
+                Type subjects and press Enter to add them as chips. Use commas to separate multiple subjects at once.
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
