@@ -150,6 +150,78 @@ export const natsApi = {
     apiRequest('/nats/account'),
 };
 
+// JetStream Stream interfaces
+export interface StreamConfig {
+  name: string;
+  subjects: string[];
+  retention: string;
+  max_consumers: number;
+  max_msgs: number;
+  max_bytes: number;
+  discard: string;
+  max_age: number;
+  max_msgs_per_subject: number;
+  max_msg_size: number;
+  storage: string;
+  num_replicas: number;
+  duplicate_window: number;
+  compression: string;
+  allow_direct: boolean;
+  mirror_direct: boolean;
+  consumer_limits: any;
+  metadata: any;
+  allow_msg_ttl: boolean;
+}
+
+export interface StreamState {
+  messages: number;
+  bytes: number;
+  first_seq: number;
+  first_ts: string;
+  last_seq: number;
+  last_ts: string;
+  consumer_count: number;
+  deleted: any;
+  num_deleted: number;
+  num_subjects: number;
+  subjects: any;
+}
+
+export interface Stream {
+  config: StreamConfig;
+  created: string;
+  state: StreamState;
+}
+
+export interface StreamsResponse {
+  streams: Stream[];
+  total: number;
+}
+
+// Streams API functions
+export const streamsApi = {
+  // Get all streams
+  getStreams: (): Promise<StreamsResponse> =>
+    apiRequest('/nats/streams'),
+
+  // Get stream details
+  getStream: (streamName: string): Promise<Stream> =>
+    apiRequest(`/nats/streams/${streamName}`),
+
+  // Create a new stream
+  createStream: (config: Partial<StreamConfig>): Promise<Stream> =>
+    apiRequest('/nats/streams', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    }),
+
+  // Delete a stream
+  deleteStream: (streamName: string): Promise<{ message: string }> =>
+    apiRequest(`/nats/streams/${streamName}`, {
+      method: 'DELETE',
+    }),
+};
+
 // Health check API
 export const healthApi = {
   getHealth: (): Promise<{ status: string; server: string }> =>
