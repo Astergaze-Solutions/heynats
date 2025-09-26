@@ -15,6 +15,7 @@ import (
 
 type NATSConnection struct {
 	Conn     *nats.Conn
+	JSConn   *nats.JetStreamContext
 	Host     string `json:"host"`
 	Port     string `json:"port"`
 	Username string `json:"username"`
@@ -76,6 +77,12 @@ func (nc *NATSConnection) Connect() error {
 	}
 
 	nc.Conn = conn
+	js, err := conn.JetStream()
+	if err != nil {
+		nc.JSConn = nil
+	}
+
+	nc.JSConn = &js
 	return nil
 }
 
@@ -248,4 +255,60 @@ func (nc *NATSConnection) infoAction() map[string]any {
 	}
 
 	return accountInfo
+}
+
+func (nc *NATSConnection) ListStreams() ([]*nats.StreamInfo, error) {
+	if nc.Conn == nil || !nc.Conn.IsConnected() {
+		return nil, fmt.Errorf("not connected to NATS server")
+	}
+
+	if nc.JSConn == nil {
+		return nil, fmt.Errorf("not connected to JetStream")
+	}
+
+	js := *nc.JSConn
+
+	// Use the JetStream API to get streams
+	streamInfos := js.Streams()
+	streamNames := make([]*nats.StreamInfo, 0, len(streamInfos))
+	for s := range streamInfos {
+		streamNames = append(streamNames, s)
+	}
+
+	return streamNames, nil
+}
+
+func (nc *NATSConnection) ListConsumers(stream string) ([]*nats.ConsumerInfo, error) {
+	if nc.Conn == nil || !nc.Conn.IsConnected() {
+		return nil, fmt.Errorf("not connected to NATS server")
+	}
+
+	js := *nc.JSConn
+
+	consumers := js.Consumers(stream)
+	consumerList := make([]*nats.ConsumerInfo, 0, len(consumers))
+	for c := range consumers {
+		consumerList = append(consumerList, c)
+	}
+
+	return consumerList, nil
+}
+
+func (nc *NATSConnection) GetStreamInfo(stream string) (*nats.StreamInfo, error) {
+	if nc.Conn == nil || !nc.Conn.IsConnected() {
+		return nil, fmt.Errorf("not connected to NATS server")
+	}
+
+	if nc.JSConn == nil {
+		return nil, fmt.Errorf("not connected to JetStream")
+	}
+
+	js := *nc.JSConn
+
+	streamInfo, err := js.StreamInfo(stream)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stream info: %w", err)
+	}
+
+	return streamInfo, nil
 }

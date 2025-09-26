@@ -9,8 +9,8 @@ import (
 )
 
 type HeyNats struct {
-	router         *infrastructure.Router
-	globalNATSConn *pkg.NATSConnection
+	router   *infrastructure.Router
+	natsConn *pkg.NATSConnection
 }
 
 func NewHeyNats(r *infrastructure.Router) *HeyNats {
@@ -28,12 +28,12 @@ func (e *HeyNats) RegisterRoutes() {
 		}
 
 		// Disconnect existing connection if any
-		if e.globalNATSConn != nil {
-			e.globalNATSConn.Disconnect()
+		if e.natsConn != nil {
+			e.natsConn.Disconnect()
 		}
 
 		// Create new connection
-		e.globalNATSConn = &pkg.NATSConnection{
+		e.natsConn = &pkg.NATSConnection{
 			Host:     req.Host,
 			Port:     req.Port,
 			Username: req.Username,
@@ -41,23 +41,23 @@ func (e *HeyNats) RegisterRoutes() {
 		}
 
 		// Attempt to connect
-		if err := e.globalNATSConn.Connect(); err != nil {
+		if err := e.natsConn.Connect(); err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error":   "Failed to connect to NATS server",
 				"details": err.Error(),
 			})
-			e.globalNATSConn = nil
+			e.natsConn = nil
 			return
 		}
 
 		// Test the connection
-		if err := e.globalNATSConn.TestConnection(); err != nil {
-			e.globalNATSConn.Disconnect()
+		if err := e.natsConn.TestConnection(); err != nil {
+			e.natsConn.Disconnect()
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error":   "Connection test failed",
 				"details": err.Error(),
 			})
-			e.globalNATSConn = nil
+			e.natsConn = nil
 			return
 		}
 
@@ -68,7 +68,7 @@ func (e *HeyNats) RegisterRoutes() {
 	})
 
 	api.GET("/api/nats/info", func(c *gin.Context) {
-		if e.globalNATSConn == nil {
+		if e.natsConn == nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error":     "Not connected to NATS server",
 				"connected": false,
@@ -76,7 +76,7 @@ func (e *HeyNats) RegisterRoutes() {
 			return
 		}
 
-		info, err := e.globalNATSConn.GetInfo()
+		info, err := e.natsConn.GetInfo()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error":   "Failed to get NATS server info",
@@ -89,7 +89,7 @@ func (e *HeyNats) RegisterRoutes() {
 	})
 
 	api.GET("/api/nats/account/info", func(c *gin.Context) {
-		if e.globalNATSConn == nil {
+		if e.natsConn == nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error":     "Not connected to NATS server",
 				"connected": false,
@@ -97,7 +97,7 @@ func (e *HeyNats) RegisterRoutes() {
 			return
 		}
 
-		accountInfo, err := e.globalNATSConn.GetAccountInfo()
+		accountInfo, err := e.natsConn.GetAccountInfo()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error":   "Failed to get account information",
@@ -110,7 +110,7 @@ func (e *HeyNats) RegisterRoutes() {
 	})
 
 	api.GET("/api/nats/account", func(c *gin.Context) {
-		if e.globalNATSConn == nil {
+		if e.natsConn == nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error":     "Not connected to NATS server",
 				"connected": false,
@@ -118,7 +118,7 @@ func (e *HeyNats) RegisterRoutes() {
 			return
 		}
 
-		accountInfo, err := e.globalNATSConn.GetAccountInfo()
+		accountInfo, err := e.natsConn.GetAccountInfo()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error":   "Failed to get account information",
@@ -131,9 +131,9 @@ func (e *HeyNats) RegisterRoutes() {
 	})
 
 	api.POST("/api/nats/disconnect", func(c *gin.Context) {
-		if e.globalNATSConn != nil {
-			e.globalNATSConn.Disconnect()
-			e.globalNATSConn = nil
+		if e.natsConn != nil {
+			e.natsConn.Disconnect()
+			e.natsConn = nil
 		}
 
 		c.JSON(http.StatusOK, gin.H{
@@ -143,17 +143,115 @@ func (e *HeyNats) RegisterRoutes() {
 	})
 
 	api.GET("/api/nats/status", func(c *gin.Context) {
-		connected := e.globalNATSConn != nil && e.globalNATSConn.Conn != nil && e.globalNATSConn.Conn.IsConnected()
+		connected := e.natsConn != nil && e.natsConn.Conn != nil && e.natsConn.Conn.IsConnected()
 		status := gin.H{
 			"connected": connected,
 		}
 
 		if connected {
-			status["host"] = e.globalNATSConn.Host
-			status["port"] = e.globalNATSConn.Port
-			status["username"] = e.globalNATSConn.Username
+			status["host"] = e.natsConn.Host
+			status["port"] = e.natsConn.Port
+			status["username"] = e.natsConn.Username
 		}
 
 		c.JSON(http.StatusOK, status)
+	})
+
+	api.GET("/api/nats/health", func(c *gin.Context) {
+		if e.natsConn == nil || e.natsConn.Conn == nil || !e.natsConn.Conn.IsConnected() {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status":    "unhealthy",
+				"connected": false,
+			})
+			return
+		}
+
+		// Perform a ping to check health
+		if err := e.natsConn.Conn.Flush(); err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status":    "unhealthy",
+				"connected": false,
+				"error":     err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"connected": true,
+		})
+	})
+
+	api.GET("/api/nats/streams", func(c *gin.Context) {
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":     "Not connected to NATS server",
+				"connected": false,
+			})
+			return
+		}
+
+		streams, err := e.natsConn.ListStreams()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to list streams",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"streams": streams,
+			"total":   len(streams),
+		})
+	})
+
+	api.GET("/api/nats/streams/:stream", func(c *gin.Context) {
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":     "Not connected to NATS server",
+				"connected": false,
+			})
+			return
+		}
+
+		stream := c.Param("stream")
+
+		streamInfo, err := e.natsConn.GetStreamInfo(stream)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to stream info",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, streamInfo)
+	})
+
+	api.GET("/api/nats/consumers/:stream", func(c *gin.Context) {
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error":     "Not connected to NATS server",
+				"connected": false,
+			})
+			return
+		}
+
+		stream := c.Param("stream")
+
+		streams, err := e.natsConn.ListConsumers(stream)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to list consumers",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"streams": streams,
+			"total":   len(streams),
+		})
 	})
 }
