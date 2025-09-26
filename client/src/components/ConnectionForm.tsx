@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
 import type { ConnectionCredentials } from "../lib/api";
 
@@ -14,9 +14,32 @@ export function ConnectionForm({ onConnect, isLoading }: ConnectionFormProps) {
     username: "",
     password: "",
   });
+  const [saveConnection, setSaveConnection] = useState(false);
+
+  // Load saved connection details on component mount
+  useEffect(() => {
+    const savedCredentials = localStorage.getItem('nats-connection');
+    if (savedCredentials) {
+      try {
+        const parsed = JSON.parse(savedCredentials);
+        setCredentials(parsed);
+        setSaveConnection(true);
+      } catch (error) {
+        console.error('Failed to parse saved credentials:', error);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Save credentials to localStorage if checkbox is checked
+    if (saveConnection) {
+      localStorage.setItem('nats-connection', JSON.stringify(credentials));
+    } else {
+      localStorage.removeItem('nats-connection');
+    }
+    
     await onConnect(credentials);
   };
 
@@ -105,6 +128,21 @@ export function ConnectionForm({ onConnect, isLoading }: ConnectionFormProps) {
                 disabled={isLoading}
               />
             </div>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              id="save-connection"
+              name="save-connection"
+              type="checkbox"
+              checked={saveConnection}
+              onChange={(e) => setSaveConnection(e.target.checked)}
+              disabled={isLoading}
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+            />
+            <label htmlFor="save-connection" className="ml-2 block text-sm text-gray-700">
+              Save connection information
+            </label>
           </div>
 
           <div>
