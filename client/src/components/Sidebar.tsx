@@ -71,11 +71,11 @@ export function Sidebar({ className }: SidebarProps) {
       {/* Logo/Brand */}
       <div className="flex-shrink-0 flex items-center px-6 py-4 border-b border-gray-200">
         <div className="flex items-center">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-sm font-bold">HN</span>
-          </div>
-          <div className="ml-3">
-            <h1 className="text-xl font-semibold text-gray-900">HeyNATS</h1>
+            <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center overflow-hidden">
+            <img src="/heynats.jpg" className="w-full h-full object-cover" alt="HeyNATS logo" />
+            </div>
+          <div className="ml-1">
+            <h1 className="text-xl font-semibold text-gray-900">Hey NATS</h1>
           </div>
         </div>
       </div>
