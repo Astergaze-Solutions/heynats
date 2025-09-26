@@ -4,6 +4,7 @@ import { DashboardLayout } from '../components/layouts/DashboardLayout';
 import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { StreamsPage } from '../pages/StreamsPage';
+import { StreamDetailPage } from '../pages/StreamDetailPage';
 import { KeyValuePage } from '../pages/KeyValuePage';
 import { PublishPage } from '../pages/PublishPage';
 import { SubscribePage } from '../pages/SubscribePage';
@@ -36,6 +37,10 @@ export const router = createBrowserRouter([
           {
             path: 'streams',
             element: <StreamsPage />,
+          },
+          {
+            path: 'streams/:streamName',
+            element: <StreamDetailPage />,
           },
           {
             path: 'kv',

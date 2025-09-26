@@ -1,17 +1,16 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { streamsApi, Stream, StreamConfig } from '../lib/api';
 import { StreamCard } from '../components/StreamCard';
-import { StreamDetailModal } from '../components/StreamDetailModal';
 import { CreateStreamModal } from '../components/CreateStreamModal';
 import { Button } from '../components/ui/button';
 import { StatsCard } from '../components/StatsCard';
 
 export function StreamsPage() {
-  const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
 
   const queryClient = useQueryClient();
 
@@ -66,8 +65,7 @@ export function StreamsPage() {
   const totalSubjects = streams.reduce((sum, stream) => sum + stream.config.subjects.length, 0);
 
   const handleViewDetails = (stream: Stream) => {
-    setSelectedStream(stream);
-    setIsDetailModalOpen(true);
+    navigate(`/dashboard/streams/${encodeURIComponent(stream.config.name)}`);
   };
 
   const handleCreateStream = async (config: Partial<StreamConfig>) => {
@@ -263,15 +261,6 @@ export function StreamsPage() {
         )}
 
         {/* Modals */}
-        <StreamDetailModal
-          stream={selectedStream}
-          isOpen={isDetailModalOpen}
-          onClose={() => {
-            setIsDetailModalOpen(false);
-            setSelectedStream(null);
-          }}
-        />
-
         <CreateStreamModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}

@@ -402,3 +402,70 @@ func (nc *NATSConnection) CreateStream(config *StreamConfig) (*nats.StreamInfo, 
 
 	return streamInfo, nil
 }
+
+// IsConnected checks if the NATS connection is active
+func (nc *NATSConnection) IsConnected() bool {
+	return nc.Conn != nil && nc.Conn.IsConnected()
+}
+
+// SubscribeToSubject subscribes to a NATS subject and calls the callback for each message
+func (nc *NATSConnection) SubscribeToSubject(subject string, callback func(data []byte, headers map[string]string)) (*nats.Subscription, error) {
+	if nc.Conn == nil || !nc.Conn.IsConnected() {
+		return nil, fmt.Errorf("not connected to NATS server")
+	}
+
+	sub, err := nc.Conn.Subscribe(subject, func(msg *nats.Msg) {
+		headers := make(map[string]string)
+		if msg.Header != nil {
+			for key, values := range msg.Header {
+				if len(values) > 0 {
+					headers[key] = values[0]
+				}
+			}
+		}
+		callback(msg.Data, headers)
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to subscribe to subject %s: %w", subject, err)
+	}
+
+	return sub, nil
+}
+
+// Utility functions for JSON handling and timestamps
+func ToJSON(v interface{}) ([]byte, error) {
+	return json.Marshal(v)
+}
+
+func MustToJSON(v interface{}) []byte {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return []byte(`{"error": "json marshal failed"}`)
+	}
+	return data
+}
+
+func GetCurrentTimestamp() string {
+	return time.Now().UTC().Format(time.RFC3339)
+}
+
+// DeleteStream deletes a JetStream stream
+func (nc *NATSConnection) DeleteStream(streamName string) error {
+	if nc.Conn == nil || !nc.Conn.IsConnected() {
+		return fmt.Errorf("not connected to NATS server")
+	}
+
+	if nc.JSConn == nil {
+		return fmt.Errorf("JetStream not available")
+	}
+
+	js := *nc.JSConn
+
+	err := js.DeleteStream(streamName)
+	if err != nil {
+		return fmt.Errorf("failed to delete stream %s: %w", streamName, err)
+	}
+
+	return nil
+}
