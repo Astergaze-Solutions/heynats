@@ -50,6 +50,17 @@ type JSAccountInfo struct {
 	Consumers int    `json:"consumers"`
 }
 
+type KVBucketsStats struct {
+	Bucket       string `json:"bucket"`
+	Values       uint64 `json:"values"`        // Total entries (including history)
+	History      int64  `json:"history"`       // Per-key history
+	TTL          string `json:"ttl"`           // TTL as string
+	BackingStore string `json:"backing_store"` // "file" or "memory"
+	Bytes        uint64 `json:"bytes"`         // Total size
+	IsCompressed bool   `json:"is_compressed"` // Compression flag
+	// Created      time.Time `json:"created"`       // Time bucket was created
+}
+
 func (nc *NATSConnection) Connect() error {
 	var opts []nats.Option
 
@@ -255,6 +266,53 @@ func (nc *NATSConnection) infoAction() map[string]any {
 	}
 
 	return accountInfo
+}
+
+func (nc *NATSConnection) ListBucketsWithStats() ([]KVBucketsStats, error) {
+	stream := *nc.JSConn
+	if stream == nil {
+		return nil, fmt.Errorf("JetStream not initialized")
+	}
+
+	bucketChan := stream.KeyValueStoreNames()
+
+	var stats []KVBucketsStats
+	for bucket := range bucketChan {
+		kv, err := stream.KeyValue(bucket)
+		if err != nil {
+			continue
+		}
+
+		status, err := kv.Status()
+		if err != nil {
+			continue
+		}
+
+		stats = append(stats, KVBucketsStats{
+			Bucket:       status.Bucket(),
+			Values:       status.Values(),
+			History:      status.History(),
+			TTL:          status.TTL().String(),
+			BackingStore: status.BackingStore(),
+			Bytes:        status.Bytes(),
+			IsCompressed: status.IsCompressed(),
+		})
+	}
+
+	return stats, nil
+}
+
+func (nc *NATSConnection) CreateBucket(bucketName string) error {
+	stream := *nc.JSConn
+	if stream == nil {
+		return fmt.Errorf("JetStream not initialized")
+	}
+
+	_, err := stream.CreateKeyValue(&nats.KeyValueConfig{
+		Bucket:  bucketName,
+		History: 1, // You can expose this as a parameter if needed
+	})
+	return err
 }
 
 func (nc *NATSConnection) ListStreams() ([]*nats.StreamInfo, error) {

@@ -3,10 +3,12 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/astergaze-solutions/heynats/internal/infrastructure"
 	"github.com/astergaze-solutions/heynats/internal/pkg"
 	"github.com/gin-gonic/gin"
+	"github.com/nats-io/nats.go"
 )
 
 type HeyNats struct {
@@ -156,6 +158,84 @@ func (e *HeyNats) RegisterRoutes() {
 		}
 
 		c.JSON(http.StatusOK, status)
+	})
+
+	api.GET("/api/nats/kv/buckets", func(c *gin.Context) {
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+			return
+		}
+
+		bucketsStats, err := e.natsConn.ListBucketsWithStats()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to fetch KV buckets",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"buckets": bucketsStats,
+		})
+	})
+
+	api.POST("/api/nats/kv/bucket", func(c *gin.Context) {
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Not connected to NATS",
+			})
+			return
+		}
+
+		var req struct {
+			Bucket  string `json:"bucket" binding:"required"`
+			History int64  `json:"history"`       // Optional
+			TTL     string `json:"ttl,omitempty"` // Optional, e.g., "60s", "5m"
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		js := *e.natsConn.JSConn
+		if js == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
+			return
+		}
+
+		kvConfig := &nats.KeyValueConfig{
+			Bucket:  req.Bucket,
+			History: uint8(req.History),
+		}
+
+		// Parse TTL string if provided
+		if req.TTL != "" {
+			ttl, err := time.ParseDuration(req.TTL)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error":   "Invalid TTL format",
+					"details": "Use valid Go duration strings like '60s', '5m', '1h30m'",
+				})
+				return
+			}
+			kvConfig.TTL = ttl
+		}
+
+		_, err := js.CreateKeyValue(kvConfig)
+		if err != nil {
+			c.JSON(http.StatusConflict, gin.H{
+				"error":   "Failed to create bucket",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusCreated, gin.H{
+			"message": "Bucket created successfully",
+			"bucket":  req.Bucket,
+		})
 	})
 
 	api.GET("/api/nats/health", func(c *gin.Context) {
