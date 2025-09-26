@@ -1,7 +1,13 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { RootLayout } from '../components/layouts/RootLayout';
+import { DashboardLayout } from '../components/layouts/DashboardLayout';
 import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { StreamsPage } from '../pages/StreamsPage';
+import { KeyValuePage } from '../pages/KeyValuePage';
+import { PublishPage } from '../pages/PublishPage';
+import { SubscribePage } from '../pages/SubscribePage';
+import { AccountPage } from '../pages/AccountPage';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 
@@ -19,9 +25,35 @@ export const router = createBrowserRouter([
         path: 'dashboard',
         element: (
           <ProtectedRoute>
-            <DashboardPage />
+            <DashboardLayout />
           </ProtectedRoute>
         ),
+        children: [
+          {
+            index: true,
+            element: <DashboardPage />,
+          },
+          {
+            path: 'streams',
+            element: <StreamsPage />,
+          },
+          {
+            path: 'kv',
+            element: <KeyValuePage />,
+          },
+          {
+            path: 'publish',
+            element: <PublishPage />,
+          },
+          {
+            path: 'subscribe',
+            element: <SubscribePage />,
+          },
+          {
+            path: 'account',
+            element: <AccountPage />,
+          },
+        ],
       },
     ],
   },

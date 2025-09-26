@@ -1,27 +1,12 @@
-import { useNavigate } from 'react-router-dom';
-import { useConnectionStatus, useNATSInfo, useAccountInfo, useDisconnectFromNATS } from '../hooks/useNATS';
-import { Button } from '../components/ui/button';
+import { useConnectionStatus, useNATSInfo, useAccountInfo } from '../hooks/useNATS';
 import { ConnectionCard } from '../components/ConnectionCard';
 import { ConnectionStats } from '../components/StatsCard';
 import { formatTimestamp, getStatusColor } from '../lib/utils';
 
 export function DashboardPage() {
-  const navigate = useNavigate();
   const { data: status } = useConnectionStatus();
   const { data: natsInfo, isLoading: infoLoading, error: infoError } = useNATSInfo(status?.connected);
   const { data: accountInfo, isLoading: accountLoading } = useAccountInfo(status?.connected);
-  const disconnectMutation = useDisconnectFromNATS();
-
-  const handleDisconnect = async () => {
-    try {
-      await disconnectMutation.mutateAsync();
-      navigate('/', { replace: true });
-    } catch (error) {
-      console.error('Disconnect failed:', error);
-      // Navigate anyway since the connection might be lost
-      navigate('/', { replace: true });
-    }
-  };
 
 
 
@@ -29,7 +14,7 @@ export function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="p-6 flex items-center justify-center h-96">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
       </div>
     );
@@ -37,13 +22,11 @@ export function DashboardPage() {
 
   if (infoError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-red-50">
+      <div className="p-6 flex items-center justify-center h-96 bg-red-50">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-red-800 mb-4">Connection Error</h2>
           <p className="text-red-600 mb-6">{infoError.message}</p>
-          <Button onClick={handleDisconnect} className="bg-red-600 hover:bg-red-700">
-            Disconnect
-          </Button>
+          <p className="text-sm text-red-500">Please try disconnecting and reconnecting.</p>
         </div>
       </div>
     );
@@ -55,33 +38,8 @@ export function DashboardPage() {
   const totalBytes = connections.reduce((acc, conn) => acc + conn.in_bytes + conn.out_bytes, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">HeyNATS Dashboard</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {accountInfo?.account_information ? (
-                  <>Connected as <span className="font-medium">{accountInfo.account_information.user}</span> • Account: {accountInfo.account_information.account}</>
-                ) : (
-                  'Managing NATS server connections and monitoring'
-                )}
-              </p>
-            </div>
-            <Button 
-              onClick={handleDisconnect} 
-              variant="outline" 
-              disabled={disconnectMutation.isPending}
-              className="border-red-300 text-red-700 hover:bg-red-50"
-            >
-              {disconnectMutation.isPending ? 'Disconnecting...' : 'Disconnect'}
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+    <div className="p-6">
+      <div className="max-w-7xl mx-auto">
         <div className="space-y-6">
           {/* Stats Overview */}
           {accountInfo && (
@@ -193,44 +151,8 @@ export function DashboardPage() {
               </div>
             </div>
           </div>
-
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              NATS Management
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2 hover:bg-blue-50 hover:border-blue-300">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-                <span className="text-sm font-medium">Publish</span>
-              </Button>
-              
-              <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2 hover:bg-green-50 hover:border-green-300">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-                <span className="text-sm font-medium">Subscribe</span>
-              </Button>
-              
-              <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2 hover:bg-purple-50 hover:border-purple-300">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                <span className="text-sm font-medium">Streams</span>
-              </Button>
-              
-              <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2 hover:bg-orange-50 hover:border-orange-300">
-                <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                </svg>
-                <span className="text-sm font-medium">Key-Value</span>
-              </Button>
-            </div>
-          </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
