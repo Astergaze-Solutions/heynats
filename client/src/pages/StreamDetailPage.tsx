@@ -3,8 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { streamsApi } from '../lib/api';
 import { Button } from '../components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { StatsCard } from '../components/StatsCard';
-import { ArrowLeft, Play, Square, Download, BarChart3, HardDrive, Users, Hash, ChevronDown, ChevronUp, Filter, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Play, Square, Download, BarChart3, HardDrive, Users, Hash, ChevronDown } from 'lucide-react';
 
 interface SubjectSubscription {
   subject: string;
@@ -32,11 +33,11 @@ export function StreamDetailPage() {
   const [selectedMessage, setSelectedMessage] = useState<MessageEvent | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   
   // New state for improved UX
-  const [collapsedSubjects, setCollapsedSubjects] = useState<Set<string>>(new Set());
-  const [visibleSubjects, setVisibleSubjects] = useState<Set<string>>(new Set());
-  const [showAllSubjects, setShowAllSubjects] = useState(true);
+  const [activeTab, setActiveTab] = useState<string>('');
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
   // Fetch stream details
   const { 
@@ -51,11 +52,19 @@ export function StreamDetailPage() {
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowJumpToLatest(false);
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [subscriptions]);
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    const shouldShowButton = distanceFromBottom > 100; // Show button if more than 100px from bottom
+    
+    setShowJumpToLatest(shouldShowButton);
+  };
+
+  // Initial scroll to bottom is handled by the auto-scroll effect
 
   // Handle escape key to close modal
   useEffect(() => {
@@ -200,54 +209,36 @@ export function StreamDetailPage() {
     setSelectedMessage(null);
   };
 
-  // Helper functions for subject visibility and collapsing
-  const toggleSubjectCollapse = (subject: string) => {
-    setCollapsedSubjects(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(subject)) {
-        newSet.delete(subject);
-      } else {
-        newSet.add(subject);
-      }
-      return newSet;
-    });
-  };
-
-  const toggleSubjectVisibility = (subject: string) => {
-    setVisibleSubjects(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(subject)) {
-        newSet.delete(subject);
-      } else {
-        newSet.add(subject);
-      }
-      return newSet;
-    });
-  };
-
-  // Initialize visible subjects when subscriptions change
+  // Initialize active tab when subscriptions change
   useEffect(() => {
     const activeSubjects = Object.entries(subscriptions)
       .filter(([_, sub]) => sub.isActive && sub.messages.length > 0)
       .map(([subject]) => subject);
     
-    if (activeSubjects.length > 0 && visibleSubjects.size === 0) {
-      setVisibleSubjects(new Set([activeSubjects[0]])); // Show only the first one by default
+    if (activeSubjects.length > 0 && !activeTab) {
+      setActiveTab(activeSubjects[0]); // Set first subject as active tab
     }
-  }, [subscriptions, visibleSubjects.size]);
+  }, [subscriptions, activeTab]);
 
-  // Auto-scroll to bottom when new messages arrive for visible subjects
+  // Auto-scroll to bottom when new messages arrive (only if user is near bottom)
   useEffect(() => {
-    const visibleSubjectsArray = Array.from(visibleSubjects);
-    const hasNewMessages = visibleSubjectsArray.some(subject => {
-      const sub = subscriptions[subject];
-      return sub && sub.messages.length > 0;
-    });
-    
-    if (hasNewMessages && !showAllSubjects) {
-      scrollToBottom();
+    if (activeTab && subscriptions[activeTab]?.messages.length > 0) {
+      // Check if container is scrolled to bottom
+      const container = messagesContainerRef.current;
+      if (container) {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+        
+        if (distanceFromBottom <= 100) {
+          // User is near bottom, auto-scroll and hide button
+          scrollToBottom();
+        } else {
+          // User is not at bottom, show the jump button
+          setShowJumpToLatest(true);
+        }
+      }
     }
-  }, [subscriptions, visibleSubjects, showAllSubjects]);
+  }, [subscriptions, activeTab]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -321,30 +312,7 @@ export function StreamDetailPage() {
             <Square className="w-4 h-4 mr-2" />
             Stop All
           </Button>
-          {/* Quick action for multiple subscriptions */}
-          {hasActiveSubscriptions && Object.values(subscriptions).filter(sub => sub.isActive).length > 1 && (
-            <Button
-              onClick={() => {
-                const activeSubjects = Object.entries(subscriptions)
-                  .filter(([_, sub]) => sub.isActive && sub.messages.length > 0)
-                  .map(([subject]) => subject);
-                
-                if (visibleSubjects.size === 0 && activeSubjects.length > 0) {
-                  setVisibleSubjects(new Set([activeSubjects[0]]));
-                  setShowAllSubjects(false);
-                } else {
-                  setShowAllSubjects(!showAllSubjects);
-                  setVisibleSubjects(new Set());
-                }
-              }}
-              variant="outline"
-              size="sm"
-              className="text-xs"
-            >
-              <Filter className="w-3 h-3 mr-1" />
-              Focus Mode
-            </Button>
-          )}
+
         </div>
       </div>
 
@@ -552,8 +520,8 @@ export function StreamDetailPage() {
         );
       })()}
 
-      {/* Live Messages Panel - Always show, takes full height */}
-      <div className="bg-white rounded-lg shadow-sm border flex-1 flex flex-col">
+      {/* Live Messages Panel - Tabbed Interface */}
+      <div className="bg-white rounded-lg shadow-sm border flex-1 flex flex-col overflow-y-auto">
         <div className="px-4 py-3 border-b bg-gray-50 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
             {(() => {
@@ -565,145 +533,55 @@ export function StreamDetailPage() {
                   <h2 className="text-lg font-semibold text-gray-900">
                     Live Messages {hasMessages ? `(${totalMessages})` : ''}
                   </h2>
-                  {hasMessages && (
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-sm text-green-600 font-medium">Active</span>
-                    </div>
-                  )}
                 </>
               );
             })()}
           </div>
-          
-          {/* Subject Filter Controls */}
-          {(() => {
-            const activeSubjectsWithMessages = Object.entries(subscriptions)
-              .filter(([_, sub]) => sub.isActive && sub.messages.length > 0);
-            
-            if (activeSubjectsWithMessages.length === 0) return null;
-            
-            return (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">
-                    Active Subjects ({activeSubjectsWithMessages.length})
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setShowAllSubjects(!showAllSubjects)}
-                      className="text-xs"
-                    >
-                      {showAllSubjects ? (
-                        <>
-                          <EyeOff className="w-3 h-3 mr-1" />
-                          Hide All
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="w-3 h-3 mr-1" />
-                          Show All
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="flex flex-wrap gap-1">
-                  {activeSubjectsWithMessages.map(([subject, subscription]) => {
-                    const isVisible = showAllSubjects || visibleSubjects.has(subject);
-                    const messageCount = subscription.messages.length;
-                    
-                    return (
-                      <button
-                        key={subject}
-                        onClick={() => toggleSubjectVisibility(subject)}
-                        className={`text-xs px-2 py-1 rounded-full border transition-all duration-200 ${
-                          isVisible
-                            ? 'bg-blue-100 border-blue-300 text-blue-800 shadow-sm'
-                            : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        {subject} ({messageCount})
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
         </div>
         
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-hidden">
           {Object.values(subscriptions).some(sub => sub.messages.length > 0) ? (
-            <div className="h-full">
-              {Object.entries(subscriptions).map(([subject, subscription]) => {
-                if (subscription.messages.length === 0) return null;
-                
-                // Check if this subject should be visible
-                const shouldShow = showAllSubjects || visibleSubjects.has(subject);
-                if (!shouldShow) return null;
-                
-                const isCollapsed = collapsedSubjects.has(subject);
-                const recentMessages = subscription.messages.slice(-50); // Show more messages with virtualization
-                const displayMessages = recentMessages.slice(-20); // Still limit for performance
-                
-                return (
-                  <div key={subject} className="border-b border-gray-100 last:border-b-0">
-                    {/* Subject Header - Always Visible and Clickable */}
-                    <div 
-                      className="sticky top-0 bg-blue-50 px-4 py-3 border-b border-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
-                      onClick={() => toggleSubjectCollapse(subject)}
+            <Tabs 
+              value={activeTab} 
+              onValueChange={setActiveTab} 
+              defaultValue=""
+              className="h-full flex flex-col"
+            >
+              <div className="px-4 py-2 border-b bg-gray-50">
+                <TabsList className="h-auto p-1 bg-gray-100">
+                  {Object.entries(subscriptions)
+                    .filter(([_, sub]) => sub.isActive && sub.messages.length > 0)
+                    .map(([subject, subscription]) => (
+                      <TabsTrigger 
+                        key={subject} 
+                        value={subject}
+                        className="flex items-center gap-2 px-3 py-2"
+                      >
+                        <span className="truncate max-w-32">{subject}</span>
+                        <span className="bg-blue-600 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[20px]">
+                          {subscription.messages.length}
+                        </span>
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                      </TabsTrigger>
+                    ))}
+                </TabsList>
+              </div>
+
+              <div className="flex-1 overflow-hidden">
+                {Object.entries(subscriptions)
+                  .filter(([_, sub]) => sub.isActive && sub.messages.length > 0)
+                  .map(([subject, subscription]) => (
+                    <TabsContent 
+                      key={subject} 
+                      value={subject} 
+                      className="h-full mt-0 p-0 relative"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center">
-                            {isCollapsed ? (
-                              <ChevronDown className="w-4 h-4 text-blue-600" />
-                            ) : (
-                              <ChevronUp className="w-4 h-4 text-blue-600" />
-                            )}
-                          </div>
-                          <h3 className="font-medium text-blue-900">
-                            {subject}
-                          </h3>
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                            {subscription.messages.length} messages
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleSubjectVisibility(subject);
-                            }}
-                            className="p-1 hover:bg-blue-200 rounded transition-colors"
-                            title="Hide this subject"
-                          >
-                            <EyeOff className="w-3 h-3 text-blue-600" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Summary when collapsed */}
-                      {isCollapsed && (
-                        <div className="mt-2 text-sm text-blue-700">
-                          <div className="flex items-center gap-4">
-                            <span>Latest: {subscription.messages.length > 0 && 
-                              new Date(subscription.messages[subscription.messages.length - 1].timestamp).toLocaleTimeString()}</span>
-                            <span>Click to expand messages</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Messages List - Collapsible */}
-                    {!isCollapsed && (
-                      <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-                        {displayMessages.map((message, index) => {
+                      <div 
+                        ref={messagesContainerRef}
+                        className="h-full overflow-y-auto divide-y divide-gray-100"
+                        onScroll={handleScroll}
+                      >
+                        {subscription.messages.slice(-50).map((message, index) => {
                           const dataStr = typeof message.data === 'string' ? message.data : JSON.stringify(message.data);
                           const isLongData = dataStr?.length > 100;
                           const previewData = isLongData ? `${dataStr.substring(0, 100)}...` : dataStr;
@@ -712,13 +590,20 @@ export function StreamDetailPage() {
                             <div
                               key={`${subject}-${index}`}
                               onClick={() => openMessageModal(message)}
-                              className="px-4 py-3 hover:bg-blue-50 transition-all duration-200 cursor-pointer border-l-4 border-transparent hover:border-blue-400 hover:shadow-sm group"
+                              className="px-4 py-2 hover:bg-blue-50 transition-all duration-200 cursor-pointer border-l-4 border-transparent hover:border-blue-400 hover:shadow-sm group"
                             >
-                              <div className="flex items-center justify-between gap-3 mb-1">
-                                <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
                                   {new Date(message.timestamp).toLocaleTimeString()}
                                 </span>
-                                <div className="flex items-center gap-2">
+                                
+                                <div className="flex-1 bg-gray-900 text-gray-100 p-2 rounded text-xs font-mono overflow-hidden">
+                                  <div className="break-words whitespace-pre-wrap truncate">
+                                    {previewData}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-shrink-0">
                                   {message.headers && Object.keys(message.headers).length > 0 && (
                                     <span className="text-xs text-orange-600 bg-orange-100 px-1 py-0.5 rounded">
                                       {Object.keys(message.headers).length} headers
@@ -734,30 +619,38 @@ export function StreamDetailPage() {
                                   </svg>
                                 </div>
                               </div>
-                              
-                              <div className="bg-gray-900 text-gray-100 p-2 rounded text-xs font-mono overflow-hidden">
-                                <div className="truncate">
-                                  {previewData}
-                                </div>
-                              </div>
                             </div>
                           );
                         })}
                         
-                        {subscription.messages?.length > 20 && (
+                        {subscription.messages.length > 50 && (
                           <div className="px-4 py-2 bg-blue-50 text-center">
                             <span className="text-xs text-blue-600">
-                              Showing latest 20 of {subscription.messages.length} messages
+                              Showing latest 50 of {subscription.messages.length} messages
+
                             </span>
                           </div>
                         )}
+                        <div ref={messagesEndRef} />
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
+                      {/* Jump to Latest Button - Show for active tab */}
+                      {activeTab === subject && (
+                        <div>
+                          {showJumpToLatest && (
+                            <button
+                              onClick={scrollToBottom}
+                              className="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-full shadow-xl transition-all duration-200 flex items-center gap-2 text-sm font-medium z-50 border-2 border-white"
+                            >
+                              <ChevronDown className="w-4 h-4" />
+                              Jump to Latest
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </TabsContent>
+                  ))}
+              </div>
+            </Tabs>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-500 p-6">
               <div className="text-center">
@@ -771,7 +664,7 @@ export function StreamDetailPage() {
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No Active Subscriptions</h3>
                     <p className="text-sm text-gray-500 max-w-md">
                       Start subscribing to subjects to see live messages appear here. 
-                      When you have multiple active subjects, use the subject controls above to manage which ones are visible.
+                      Each subject will appear as a separate tab when messages arrive.
                     </p>
                   </>
                 ) : (
@@ -781,12 +674,7 @@ export function StreamDetailPage() {
                     </div>
                     <h3 className="text-lg font-medium text-blue-900 mb-2">Waiting for Messages</h3>
                     <p className="text-sm text-blue-600 max-w-md mb-4">
-                      You have active subscriptions. Messages will appear here when they arrive.
-                      {Object.entries(subscriptions).filter(([_, sub]) => sub.isActive).length > 1 && (
-                        <span className="block mt-2 text-xs">
-                          💡 Tip: With multiple subscriptions, use the subject filters above to focus on specific subjects
-                        </span>
-                      )}
+                      You have active subscriptions. Messages will appear as tabs when they arrive.
                     </p>
                     <div className="flex flex-wrap gap-1 justify-center max-w-md">
                       {Object.entries(subscriptions).filter(([_, sub]) => sub.isActive).map(([subject]) => (
