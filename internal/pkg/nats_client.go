@@ -279,11 +279,11 @@ func (nc *NATSConnection) infoAction() map[string]any {
 }
 
 func (nc *NATSConnection) ListBucketsWithStats() ([]KVBucketsStats, error) {
-	stream := *nc.JSConn
-	if stream == nil {
+	if nc.JSConn == nil {
 		return nil, fmt.Errorf("JetStream not initialized")
 	}
 
+	stream := *nc.JSConn
 	bucketChan := stream.KeyValueStoreNames()
 
 	var stats []KVBucketsStats
@@ -313,11 +313,11 @@ func (nc *NATSConnection) ListBucketsWithStats() ([]KVBucketsStats, error) {
 }
 
 func (nc *NATSConnection) CreateBucket(bucketName string) error {
-	stream := *nc.JSConn
-	if stream == nil {
+	if nc.JSConn == nil {
 		return fmt.Errorf("JetStream not initialized")
 	}
 
+	stream := *nc.JSConn
 	_, err := stream.CreateKeyValue(&nats.KeyValueConfig{
 		Bucket:  bucketName,
 		History: 1, // You can expose this as a parameter if needed
@@ -701,4 +701,120 @@ func (nc *NATSConnection) DeleteStream(streamName string) error {
 	}
 
 	return nil
+}
+
+// DeleteBucket removes a KV bucket entirely.
+func (nc *NATSConnection) DeleteBucket(bucketName string) error {
+	stream := *nc.JSConn
+	if stream == nil {
+		return fmt.Errorf("JetStream not initialized")
+	}
+
+	return stream.DeleteKeyValue(bucketName)
+}
+
+func (nc *NATSConnection) PutValue(bucket, key string, value []byte) (uint64, error) {
+	if nc.JSConn == nil {
+		return 0, fmt.Errorf("JetStream not initialized")
+	}
+
+	stream := *nc.JSConn
+	kv, err := stream.KeyValue(bucket)
+	if err != nil {
+		return 0, err
+	}
+	return kv.Put(key, value)
+}
+
+func (nc *NATSConnection) ListKeyValues(bucket string, page, pageSize int) ([]struct {
+	Key   string      `json:"key"`
+	Value interface{} `json:"value"`
+}, error) {
+	if nc.JSConn == nil {
+		return nil, fmt.Errorf("JetStream not initialized")
+	}
+
+	js := *nc.JSConn
+	kv, err := js.KeyValue(bucket)
+	if err != nil {
+		return nil, err
+	}
+
+	keys, err := kv.Keys()
+	if err != nil {
+		return nil, err
+	}
+
+	// Pagination
+	start := page * pageSize
+	if start >= len(keys) {
+		return []struct {
+			Key   string      `json:"key"`
+			Value interface{} `json:"value"`
+		}{}, nil
+	}
+	end := start + pageSize
+	if end > len(keys) {
+		end = len(keys)
+	}
+	sliceKeys := keys[start:end]
+
+	result := make([]struct {
+		Key   string      `json:"key"`
+		Value interface{} `json:"value"`
+	}, 0, len(sliceKeys))
+
+	for _, key := range sliceKeys {
+		entry, err := kv.Get(key)
+		if err != nil {
+			continue
+		}
+
+		raw := entry.Value()
+		var parsed interface{}
+		if err := json.Unmarshal(raw, &parsed); err != nil {
+			parsed = string(raw) // fallback to string if not JSON
+		}
+
+		result = append(result, struct {
+			Key   string      `json:"key"`
+			Value interface{} `json:"value"`
+		}{
+			Key:   key,
+			Value: parsed,
+		})
+	}
+
+	return result, nil
+}
+
+func (nc *NATSConnection) GetValue(bucket, key string) ([]byte, error) {
+	if nc.JSConn == nil {
+		return nil, fmt.Errorf("JetStream not initialized")
+	}
+
+	stream := *nc.JSConn
+
+	kv, err := stream.KeyValue(bucket)
+	if err != nil {
+		return nil, err
+	}
+	entry, err := kv.Get(key)
+	if err != nil {
+		return nil, err
+	}
+	return entry.Value(), nil
+}
+
+func (nc *NATSConnection) DeleteKey(bucket, key string) error {
+	if nc.JSConn == nil {
+		return fmt.Errorf("JetStream not initialized")
+	}
+
+	stream := *nc.JSConn
+	kv, err := stream.KeyValue(bucket)
+	if err != nil {
+		return err
+	}
+	return kv.Delete(key)
 }
