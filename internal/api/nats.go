@@ -516,4 +516,145 @@ func (e *HeyNats) RegisterRoutes() {
 			"message": fmt.Sprintf("Stream '%s' deleted successfully", streamName),
 		})
 	})
+
+	// KV Bucket detail endpoints
+	api.GET("/api/nats/kv/buckets/:bucket", func(c *gin.Context) {
+		bucketName := c.Param("bucket")
+
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+			return
+		}
+
+		bucket, err := e.natsConn.GetBucket(bucketName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to get bucket details",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, bucket)
+	})
+
+	api.DELETE("/api/nats/kv/buckets/:bucket", func(c *gin.Context) {
+		bucketName := c.Param("bucket")
+
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+			return
+		}
+
+		err := e.natsConn.DeleteBucket(bucketName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to delete bucket",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": fmt.Sprintf("Bucket '%s' deleted successfully", bucketName),
+		})
+	})
+
+	// KV Keys endpoints
+	api.GET("/api/nats/kv/buckets/:bucket/keys", func(c *gin.Context) {
+		bucketName := c.Param("bucket")
+
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+			return
+		}
+
+		entries, err := e.natsConn.GetBucketKeys(bucketName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to get bucket keys",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"entries": entries,
+			"bucket":  bucketName,
+		})
+	})
+
+	api.GET("/api/nats/kv/buckets/:bucket/keys/:key", func(c *gin.Context) {
+		bucketName := c.Param("bucket")
+		key := c.Param("key")
+
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+			return
+		}
+
+		entry, err := e.natsConn.GetKey(bucketName, key)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to get key",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, entry)
+	})
+
+	api.PUT("/api/nats/kv/buckets/:bucket/keys/:key", func(c *gin.Context) {
+		bucketName := c.Param("bucket")
+		key := c.Param("key")
+
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+			return
+		}
+
+		var req struct {
+			Value string `json:"value" binding:"required"`
+		}
+
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		entry, err := e.natsConn.SetKey(bucketName, key, req.Value)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to set key",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, entry)
+	})
+
+	api.DELETE("/api/nats/kv/buckets/:bucket/keys/:key", func(c *gin.Context) {
+		bucketName := c.Param("bucket")
+		key := c.Param("key")
+
+		if e.natsConn == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+			return
+		}
+
+		err := e.natsConn.DeleteKey(bucketName, key)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to delete key",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": fmt.Sprintf("Key '%s' deleted successfully from bucket '%s'", key, bucketName),
+		})
+	})
 }

@@ -3,13 +3,14 @@ package pkg
 import (
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/astergaze-solutions/heynats/internal/util"
 	"github.com/dustin/go-humanize"
-	"github.com/nats-io/nats-server/v2/server"
 	"github.com/nats-io/nats.go"
 )
 
@@ -196,29 +197,38 @@ func (nc *NATSConnection) infoAction() map[string]any {
 	rtt, _ := nc.Conn.RTT()
 	tlsc, _ := nc.Conn.TLSConnectionState()
 
-	var ui *server.UserInfo
+	// Simplified user info without server dependency
+	var userInfo map[string]interface{}
 	if util.ServerMinVersion(nc.Conn, 2, 10, 0) {
 		subj := "$SYS.REQ.USER.INFO"
 		resp, err := nc.Conn.Request(subj, nil, time.Second)
 		if err == nil {
-			var res = struct {
-				Data   *server.UserInfo  `json:"data"`
-				Server server.ServerInfo `json:"server"`
-				Error  *server.ApiError  `json:"error"`
-			}{}
-
+			var res map[string]interface{}
 			err = json.Unmarshal(resp.Data, &res)
-			if err == nil && res.Error == nil {
-				ui = res.Data
+			if err == nil {
+				if data, ok := res["data"].(map[string]interface{}); ok {
+					userInfo = data
+				}
 			}
 		}
 	}
 
+	// Extract user info safely
+	var userID, account interface{}
+	var expires interface{}
+	var permissions interface{}
+	if userInfo != nil {
+		userID = userInfo["user_id"]
+		account = userInfo["account"]
+		expires = userInfo["expires"]
+		permissions = userInfo["permissions"]
+	}
+
 	accountInfo := map[string]any{
-		"user":             ui.UserID,
-		"account":          ui.Account,
-		"expires":          ui.Expires,
-		"permissions":      ui.Permissions,
+		"user":             userID,
+		"account":          account,
+		"expires":          expires,
+		"permissions":      permissions,
 		"client_id":        id,
 		"client_ip":        ip,
 		"rtt":              rtt.String(),
@@ -230,7 +240,7 @@ func (nc *NATSConnection) infoAction() map[string]any {
 		"server_version":   nc.Conn.ConnectedServerVersion(),
 		"server_name":      nc.Conn.ConnectedServerName(),
 	}
-	if ui.Expires == 0 {
+	if expires == 0 {
 		accountInfo["expires"] = "never"
 	}
 	if lip != "" && !strings.HasPrefix(lip, ip.String()) {
@@ -261,8 +271,8 @@ func (nc *NATSConnection) infoAction() map[string]any {
 		}
 	}
 
-	if ui != nil && ui.Permissions != nil {
-		accountInfo["permissions"] = ui.Permissions
+	if userInfo != nil && permissions != nil {
+		accountInfo["permissions"] = permissions
 	}
 
 	return accountInfo
@@ -313,6 +323,171 @@ func (nc *NATSConnection) CreateBucket(bucketName string) error {
 		History: 1, // You can expose this as a parameter if needed
 	})
 	return err
+}
+
+// GetBucket returns detailed information about a specific KV bucket
+func (nc *NATSConnection) GetBucket(bucketName string) (*KVBucketsStats, error) {
+	js := *nc.JSConn
+	if js == nil {
+		return nil, fmt.Errorf("JetStream not initialized")
+	}
+
+	kv, err := js.KeyValue(bucketName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access bucket %s: %w", bucketName, err)
+	}
+
+	status, err := kv.Status()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get bucket status: %w", err)
+	}
+
+	return &KVBucketsStats{
+		Bucket:       status.Bucket(),
+		Values:       status.Values(),
+		History:      status.History(),
+		TTL:          status.TTL().String(),
+		BackingStore: status.BackingStore(),
+		Bytes:        status.Bytes(),
+		IsCompressed: status.IsCompressed(),
+	}, nil
+}
+
+// DeleteBucket deletes a KV bucket
+func (nc *NATSConnection) DeleteBucket(bucketName string) error {
+	js := *nc.JSConn
+	if js == nil {
+		return fmt.Errorf("JetStream not initialized")
+	}
+
+	return js.DeleteKeyValue(bucketName)
+}
+
+// KVEntry represents a key-value entry
+type KVEntry struct {
+	Key      string `json:"key"`
+	Value    string `json:"value"`
+	Created  string `json:"created"`
+	Revision uint64 `json:"revision"`
+}
+
+// GetBucketKeys returns all keys in a bucket
+func (nc *NATSConnection) GetBucketKeys(bucketName string) ([]KVEntry, error) {
+	js := *nc.JSConn
+	if js == nil {
+		return nil, fmt.Errorf("JetStream not initialized")
+	}
+
+	kv, err := js.KeyValue(bucketName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access bucket %s: %w", bucketName, err)
+	}
+
+	// Get all keys - note: this is a simple implementation
+	// For production, you might want to implement pagination
+	keys, err := kv.Keys()
+	if err != nil && !errors.Is(err, nats.ErrNoKeysFound) {
+		return nil, fmt.Errorf("failed to list keys: %w", err)
+	}
+	log.Println("Keys found:", keys)
+
+	if len(keys) == 0 {
+		return []KVEntry{}, nil
+	}
+
+	var entries []KVEntry
+	for _, keyName := range keys {
+		entry, err := kv.Get(keyName)
+		if err != nil {
+			continue // Skip keys that can't be retrieved
+		}
+
+		entries = append(entries, KVEntry{
+			Key:      keyName,
+			Value:    string(entry.Value()),
+			Created:  entry.Created().Format(time.RFC3339),
+			Revision: entry.Revision(),
+		})
+	}
+
+	return entries, nil
+}
+
+// GetKey returns a specific key's value
+func (nc *NATSConnection) GetKey(bucketName, key string) (*KVEntry, error) {
+	js := *nc.JSConn
+	if js == nil {
+		return nil, fmt.Errorf("JetStream not initialized")
+	}
+
+	kv, err := js.KeyValue(bucketName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access bucket %s: %w", bucketName, err)
+	}
+
+	entry, err := kv.Get(key)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get key %s: %w", key, err)
+	}
+
+	return &KVEntry{
+		Key:      key,
+		Value:    string(entry.Value()),
+		Created:  entry.Created().Format(time.RFC3339),
+		Revision: entry.Revision(),
+	}, nil
+}
+
+// SetKey sets a key's value
+func (nc *NATSConnection) SetKey(bucketName, key, value string) (*KVEntry, error) {
+	js := *nc.JSConn
+	if js == nil {
+		return nil, fmt.Errorf("JetStream not initialized")
+	}
+
+	kv, err := js.KeyValue(bucketName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access bucket %s: %w", bucketName, err)
+	}
+
+	revision, err := kv.Put(key, []byte(value))
+	if err != nil {
+		return nil, fmt.Errorf("failed to set key %s: %w", key, err)
+	}
+
+	// Return the updated entry
+	entry, err := kv.Get(key)
+	if err != nil {
+		// Fallback to basic info if we can't retrieve the entry
+		return &KVEntry{
+			Key:      key,
+			Value:    value,
+			Created:  time.Now().Format(time.RFC3339),
+			Revision: revision,
+		}, nil
+	}
+
+	return &KVEntry{
+		Key:      key,
+		Value:    string(entry.Value()),
+		Created:  entry.Created().Format(time.RFC3339),
+		Revision: entry.Revision(),
+	}, nil
+}
+
+// DeleteKey deletes a specific key
+func (nc *NATSConnection) DeleteKey(bucketName, key string) error {
+	js := *nc.JSConn
+	if js == nil {
+		return fmt.Errorf("JetStream not initialized")
+	}
+
+	kv, err := js.KeyValue(bucketName)
+	if err != nil {
+		return fmt.Errorf("failed to access bucket %s: %w", bucketName, err)
+	}
+
+	return kv.Delete(key)
 }
 
 func (nc *NATSConnection) ListStreams() ([]*nats.StreamInfo, error) {

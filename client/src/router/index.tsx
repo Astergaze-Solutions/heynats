@@ -6,6 +6,7 @@ import { DashboardPage } from '../pages/DashboardPage';
 import { StreamsPage } from '../pages/StreamsPage';
 import { StreamDetailPage } from '../pages/StreamDetailPage';
 import { KeyValuePage } from '../pages/KeyValuePage';
+import { KVBucketDetailPage } from '../pages/KVBucketDetailPage';
 import { PublishPage } from '../pages/PublishPage';
 import { SubscribePage } from '../pages/SubscribePage';
 import { AccountPage } from '../pages/AccountPage';
@@ -45,6 +46,10 @@ export const router = createBrowserRouter([
           {
             path: 'kv',
             element: <KeyValuePage />,
+          },
+          {
+            path: 'kv/:bucketName',
+            element: <KVBucketDetailPage />,
           },
           {
             path: 'publish',
