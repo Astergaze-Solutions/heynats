@@ -353,16 +353,6 @@ func (nc *NATSConnection) GetBucket(bucketName string) (*KVBucketsStats, error) 
 	}, nil
 }
 
-// DeleteBucket deletes a KV bucket
-func (nc *NATSConnection) DeleteBucket(bucketName string) error {
-	js := *nc.JSConn
-	if js == nil {
-		return fmt.Errorf("JetStream not initialized")
-	}
-
-	return js.DeleteKeyValue(bucketName)
-}
-
 // KVEntry represents a key-value entry
 type KVEntry struct {
 	Key      string `json:"key"`
@@ -473,21 +463,6 @@ func (nc *NATSConnection) SetKey(bucketName, key, value string) (*KVEntry, error
 		Created:  entry.Created().Format(time.RFC3339),
 		Revision: entry.Revision(),
 	}, nil
-}
-
-// DeleteKey deletes a specific key
-func (nc *NATSConnection) DeleteKey(bucketName, key string) error {
-	js := *nc.JSConn
-	if js == nil {
-		return fmt.Errorf("JetStream not initialized")
-	}
-
-	kv, err := js.KeyValue(bucketName)
-	if err != nil {
-		return fmt.Errorf("failed to access bucket %s: %w", bucketName, err)
-	}
-
-	return kv.Delete(key)
 }
 
 func (nc *NATSConnection) ListStreams() ([]*nats.StreamInfo, error) {
