@@ -30,7 +30,7 @@ build-client:
 # Build Go server
 build-server:
 	@echo "Building Go server..."
-	GOOS=linux GOARCH=amd64 go build -o bin/server main.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w" -o bin/server main.go
 	@echo "Server built successfully!"
 
 # Build both client and server
