@@ -71,11 +71,11 @@ export function KeyValuePage() {
   // Show connection required message
   if (!isConnected) {
     return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Key-Value Store</h2>
-            <p className="text-gray-600">Manage NATS Key-Value buckets and operations</p>
+      <div className="p-3">
+        <div className="max-w-full">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Key-Value Store</h2>
+            <p className="text-sm text-gray-600">Manage NATS Key-Value buckets and operations</p>
           </div>
           
           <div className="bg-white rounded-lg border border-gray-200 p-8">
@@ -98,11 +98,11 @@ export function KeyValuePage() {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Key-Value Store</h2>
-            <p className="text-gray-600">Manage NATS Key-Value buckets and operations</p>
+      <div className="p-3">
+        <div className="max-w-full">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Key-Value Store</h2>
+            <p className="text-sm text-gray-600">Manage NATS Key-Value buckets and operations</p>
           </div>
           
           <div className="bg-white rounded-lg border border-gray-200 p-8">
@@ -120,11 +120,11 @@ export function KeyValuePage() {
   // Show error state
   if (error) {
     return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Key-Value Store</h2>
-            <p className="text-gray-600">Manage NATS Key-Value buckets and operations</p>
+      <div className="p-3">
+        <div className="max-w-full">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Key-Value Store</h2>
+            <p className="text-sm text-gray-600">Manage NATS Key-Value buckets and operations</p>
           </div>
           
           <div className="bg-white rounded-lg border border-gray-200 p-8">
@@ -149,16 +149,16 @@ export function KeyValuePage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="p-3">
+      <div className="max-w-full">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Key-Value Store</h2>
-              <p className="text-gray-600">Manage NATS Key-Value buckets and operations</p>
+              <h2 className="text-xl font-bold text-gray-900">Key-Value Store</h2>
+              <p className="text-sm text-gray-600">Manage NATS Key-Value buckets and operations</p>
             </div>
-            <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Button onClick={() => setIsCreateModalOpen(true)} size="sm">
               <Plus className="w-4 h-4 mr-2" />
               Create Bucket
             </Button>
@@ -167,7 +167,7 @@ export function KeyValuePage() {
 
         {/* Stats Overview */}
         {!isLoading && buckets.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <StatsCard
               title="Total Buckets"
               value={totalBuckets}

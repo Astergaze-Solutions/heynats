@@ -17,15 +17,15 @@ export function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+      <div className="p-3 flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
 
   if (infoError) {
     return (
-      <div className="p-6 flex items-center justify-center h-96 bg-red-50">
+      <div className="p-3 flex items-center justify-center h-64 bg-red-50">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-red-800 mb-4">Connection Error</h2>
           <p className="text-red-600 mb-6">{infoError.message}</p>
@@ -55,9 +55,9 @@ export function DashboardPage() {
   });
 
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="space-y-6">
+    <div className="p-3">
+      <div className="max-w-full">
+        <div className="space-y-4">
           {/* Stats Overview */}
           {accountInfo && (
             <ConnectionStats
@@ -71,9 +71,9 @@ export function DashboardPage() {
           <div>
             {/* Server Information */}
             <div>
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Server Information</h3>
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold text-gray-900">Server Information</h3>
                   {natsInfo && (
                     <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${getStatusColor(natsInfo.is_connected ? 'connected' : 'disconnected')}`}>
                       {natsInfo.is_connected ? 'Connected' : 'Disconnected'}
@@ -82,7 +82,7 @@ export function DashboardPage() {
                 </div>
                 
                 {accountInfo?.account_information && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                   <div>
                     <h4 className="text-sm font-medium text-gray-500">Server</h4>
                     <div className="text-sm text-gray-900 font-mono">
@@ -135,13 +135,13 @@ export function DashboardPage() {
             </div>
 
             {/* Connections List */}
-            <div className="mt-6">
-              <div className="bg-white rounded-lg border border-gray-200 p-6 overflow-y-auto" style={{ maxHeight: '600px' }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+            <div className="mt-4">
+              <div className="bg-white rounded-lg border border-gray-200 p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 320px)' }}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold text-gray-900">
                     Active Connections
                     {accountInfo && (
-                      <span className="ml-2 text-sm font-normal text-gray-500">
+                      <span className="ml-2 text-xs font-normal text-gray-500">
                         ({searchQuery ? filteredConnections.length : accountInfo.connection_limits.num_connections} of {accountInfo.connection_limits.limit})
                       </span>
                     )}
@@ -152,7 +152,7 @@ export function DashboardPage() {
                 </div>
 
                 {/* Search Input */}
-                <div className="mb-4">
+                <div className="mb-3">
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,17 +164,17 @@ export function DashboardPage() {
                       placeholder="Search connections by name, IP, language, or CID..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
+                      className="pl-10 h-8"
                     />
                   </div>
                   {searchQuery && (
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-1 text-xs text-gray-500">
                       Found {filteredConnections.length} connection(s) matching "{searchQuery}"
                     </p>
                   )}
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {filteredConnections.length > 0 ? (
                     filteredConnections.map((connection) => (
                       <ConnectionCard key={connection.cid} connection={connection} />

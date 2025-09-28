@@ -86,9 +86,9 @@ export function StreamsPage() {
 
   if (error) {
     return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+      <div className="p-3">
+        <div className="max-w-full">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex">
               <div className="flex-shrink-0">
                 <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -114,16 +114,16 @@ export function StreamsPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="p-3">
+      <div className="max-w-full">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Streams</h2>
-              <p className="text-gray-600">Manage JetStream streams and consumers</p>
+              <h2 className="text-xl font-bold text-gray-900">Streams</h2>
+              <p className="text-sm text-gray-600">Manage JetStream streams and consumers</p>
             </div>
-            <Button onClick={() => setIsCreateModalOpen(true)}>
+            <Button onClick={() => setIsCreateModalOpen(true)} size="sm">
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -134,7 +134,7 @@ export function StreamsPage() {
 
         {/* Stats Overview */}
         {!isLoading && streams.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
             <StatsCard
               title="Total Streams"
               value={streams.length}
@@ -176,7 +176,7 @@ export function StreamsPage() {
 
         {/* Search and Filters */}
         {!isLoading && streams.length > 0 && (
-          <div className="mb-6">
+          <div className="mb-4">
             <div className="flex items-center gap-4">
               <div className="relative flex-1 max-w-md">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

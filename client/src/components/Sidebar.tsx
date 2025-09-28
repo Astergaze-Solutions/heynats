@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { useState } from 'react';
 
 interface SidebarProps {
   className?: string;
@@ -65,23 +66,48 @@ const navigation = [
 
 export function Sidebar({ className }: SidebarProps) {
   const location = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  const toggleCollapsed = () => {
+    setIsCollapsed(!isCollapsed);
+  };
 
   return (
-    <div className={cn('w-64 bg-white border-r border-gray-200 flex flex-col', className)}>
+    <div className={cn(
+      'bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out',
+      isCollapsed ? 'w-20' : 'w-60',
+      className
+    )}>
       {/* Logo/Brand */}
-      <div className="flex-shrink-0 flex items-center px-6 py-4 border-b border-gray-200">
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-4 border-b border-gray-200">
         <div className="flex items-center">
-            <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center overflow-hidden">
+          <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center overflow-hidden">
             <img src="/heynats.jpg" className="w-full h-full object-cover" alt="HeyNATS logo" />
-            </div>
-          <div className="ml-1">
-            <h1 className="text-xl font-semibold text-gray-900">Hey NATS</h1>
           </div>
+          {!isCollapsed && (
+            <div className="ml-3">
+              <h1 className="text-xl font-semibold text-gray-900">Hey NATS</h1>
+            </div>
+          )}
         </div>
+        <button
+          onClick={toggleCollapsed}
+          className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg 
+            className={cn('w-4 h-4 transition-transform duration-200', isCollapsed ? 'rotate-180' : '')}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-2 py-6 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
           const isActive = location.pathname === item.href || 
             (item.href !== '/dashboard' && location.pathname.startsWith(item.href));
@@ -91,32 +117,44 @@ export function Sidebar({ className }: SidebarProps) {
               key={item.name}
               to={item.href}
               className={cn(
-                'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors relative',
+                isCollapsed ? 'justify-center' : '',
                 isActive
                   ? 'bg-indigo-50 text-indigo-700 border-r-2 border-indigo-600'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               )}
+              title={isCollapsed ? item.name : undefined}
             >
               <span
                 className={cn(
-                  'mr-3 flex-shrink-0',
+                  isCollapsed ? '' : 'mr-3',
+                  'flex-shrink-0',
                   isActive ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500'
                 )}
               >
                 {item.icon}
               </span>
-              {item.name}
+              {!isCollapsed && (
+                <span className="truncate">{item.name}</span>
+              )}
+              {isCollapsed && (
+                <div className="absolute left-full ml-2 px-2 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                  {item.name}
+                </div>
+              )}
             </Link>
           );
         })}
       </nav>
 
       {/* Footer */}
-      <div className="flex-shrink-0 border-t border-gray-200 p-4">
-        <div className="text-xs text-gray-500 text-center">
-          NATS Management Console
+      {!isCollapsed && (
+        <div className="flex-shrink-0 border-t border-gray-200 p-4">
+          <div className="text-xs text-gray-500 text-center">
+            NATS Management Console
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

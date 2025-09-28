@@ -20,30 +20,30 @@ export function StatsCard({ title, value, subtitle, icon, trend }: StatsCardProp
       : 'text-gray-600';
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all duration-200 hover:border-gray-300">
-      <div className="flex items-center justify-between mb-4">
-        <div className="w-12 h-12 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl flex items-center justify-center">
+    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all duration-200 hover:border-gray-300">
+      <div className="flex items-start justify-between mb-2">
+        <div className="w-8 h-8 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg flex items-center justify-center">
           {icon}
         </div>
       </div>
       
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium text-gray-600 uppercase tracking-wide">{title}</h3>
-        <p className="text-2xl font-bold text-gray-900 leading-none">
+      <div className="space-y-1">
+        <h3 className="text-xs font-medium text-gray-600 uppercase tracking-wide">{title}</h3>
+        <p className="text-lg font-bold text-gray-900 leading-none">
           {typeof value === 'number' ? value.toLocaleString() : value}
         </p>
         {subtitle && (
-          <p className="text-sm text-gray-500">{subtitle}</p>
+          <p className="text-xs text-gray-500">{subtitle}</p>
         )}
       </div>
 
       {trend && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="mt-3 pt-2 border-t border-gray-100">
           <div className="flex items-center">
-            <span className={`inline-flex items-center text-sm font-medium ${trendColor}`}>
+            <span className={`inline-flex items-center text-xs font-medium ${trendColor}`}>
               {trend.direction === 'up' ? '↗' : trend.direction === 'down' ? '↘' : '→'} {trend.value}
             </span>
-            <span className="text-sm text-gray-500 ml-2">{trend.label}</span>
+            <span className="text-xs text-gray-500 ml-2">{trend.label}</span>
           </div>
         </div>
       )}
@@ -62,7 +62,7 @@ export function ConnectionStats({ totalConnections, activeConnections, totalMess
   const activePercentage = totalConnections > 0 ? ((activeConnections / totalConnections) * 100).toFixed(1) : '0';
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <StatsCard
         title="Total Connections"
         value={totalConnections}

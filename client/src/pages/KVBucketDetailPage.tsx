@@ -177,12 +177,13 @@ export function KVBucketDetailPage() {
   // Redirect if not connected
   if (!isConnected) {
     return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-3">
+        <div className="max-w-full">
           <Button
             onClick={() => navigate('/dashboard/kv')}
             variant="outline"
-            className="mb-6"
+            size="sm"
+            className="mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to KV Store
@@ -208,12 +209,13 @@ export function KVBucketDetailPage() {
   // Loading state
   if (bucketLoading) {
     return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-3">
+        <div className="max-w-full">
           <Button
             onClick={() => navigate('/dashboard/kv')}
             variant="outline"
-            className="mb-6"
+            size="sm"
+            className="mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to KV Store
@@ -234,12 +236,13 @@ export function KVBucketDetailPage() {
   // Error state
   if (bucketError) {
     return (
-      <div className="p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-3">
+        <div className="max-w-full">
           <Button
             onClick={() => navigate('/dashboard/kv')}
             variant="outline"
-            className="mb-6"
+            size="sm"
+            className="mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to KV Store
@@ -262,14 +265,15 @@ export function KVBucketDetailPage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="p-3">
+      <div className="max-w-full">
         {/* Header */}
-        <div className="mb-6">
+        <div className="mb-4">
           <Button
             onClick={() => navigate('/dashboard/kv')}
             variant="outline"
-            className="mb-4"
+            size="sm"
+            className="mb-3"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to KV Store
@@ -277,23 +281,25 @@ export function KVBucketDetailPage() {
           
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{bucketName}</h2>
-              <p className="text-gray-600">Key-Value bucket management</p>
+              <h2 className="text-xl font-bold text-gray-900">{bucketName}</h2>
+              <p className="text-sm text-gray-600">Key-Value bucket management</p>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
               <Button
                 onClick={() => {
                   setIsAddingKey(true);
                   setActiveTab('keys');
                 }}
                 variant="outline"
+                size="sm"
               >
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="w-4 h-4 mr-1" />
                 Add Key
               </Button>
               <Button
                 onClick={handleDeleteBucket}
                 variant="outline"
+                size="sm"
                 className="text-red-600 hover:text-red-700"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
@@ -311,9 +317,9 @@ export function KVBucketDetailPage() {
           </TabsList>
 
           {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-4">
             {bucket && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <StatsCard
                   title="Total Keys"
                   value={bucket.values?.toLocaleString() || 'N/A'}
@@ -339,9 +345,9 @@ export function KVBucketDetailPage() {
 
             {/* Bucket Configuration */}
             {bucket && (
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Configuration</h3>
-                <dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <h3 className="text-base font-semibold text-gray-900 mb-3">Configuration</h3>
+                <dl className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Storage Type</dt>
                     <dd className="text-sm text-gray-900 capitalize">{bucket.backing_store}</dd>

@@ -1,13 +1,13 @@
 export function PublishPage() {
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Publish Messages</h2>
-          <p className="text-gray-600">Send messages to NATS subjects</p>
+    <div className="p-3">
+      <div className="max-w-full">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900">Publish Messages</h2>
+          <p className="text-sm text-gray-600">Send messages to NATS subjects</p>
         </div>
         
-        <div className="bg-white rounded-lg border border-gray-200 p-8">
+        <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="text-center">
             <svg className="mx-auto h-16 w-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

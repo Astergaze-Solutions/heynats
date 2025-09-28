@@ -315,23 +315,24 @@ export function StreamDetailPage() {
 
 
   return (
-    <div className="p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-8rem)]">
+    <div className="p-3">
+      <div className="max-w-full">
+        <div className="flex flex-col lg:flex-row gap-3 h-[calc(100vh-7rem)]">
         {/* Left Side - Main Content */}
         <div className="flex-1 overflow-y-auto lg:w-1/2">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <Button
             variant="outline"
+            size="sm"
             onClick={() => navigate('/dashboard/streams')}
-            className="mr-4"
+            className="mr-3"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
+            <ArrowLeft className="w-4 h-4 mr-1" />
             Back
           </Button>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-xl font-bold text-gray-900">
             Stream: {stream.config?.name || 'Unknown'}
           </h1>
         </div>
@@ -339,18 +340,20 @@ export function StreamDetailPage() {
           <Button
             onClick={startSelectedSubscriptions}
             disabled={selectedSubjects.size === 0}
+            size="sm"
             className="bg-green-600 hover:bg-green-700"
           >
-            <Play className="w-4 h-4 mr-2" />
-            Start Selected ({selectedSubjects.size})
+            <Play className="w-3 h-3 mr-1" />
+            Start ({selectedSubjects.size})
           </Button>
           <Button
             onClick={stopAllSubscriptions}
             disabled={!hasActiveSubscriptions}
             variant="outline"
+            size="sm"
             className="border-red-300 text-red-600 hover:bg-red-50"
           >
-            <Square className="w-4 h-4 mr-2" />
+            <Square className="w-3 h-3 mr-1" />
             Stop All
           </Button>
 
@@ -358,7 +361,7 @@ export function StreamDetailPage() {
       </div>
 
       {/* Stream Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <StatsCard
           title="Messages"
           value={(stream.state?.messages || 0).toLocaleString()}
@@ -382,9 +385,9 @@ export function StreamDetailPage() {
       </div>
 
       {/* Stream Configuration */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Stream Configuration</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+        <h2 className="text-base font-semibold mb-3">Stream Configuration</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
           <div>
             <span className="font-medium">Retention:</span> {stream.config?.retention || 'Unknown'}
           </div>
@@ -407,9 +410,9 @@ export function StreamDetailPage() {
       </div>
 
       {/* Virtualized Subjects List */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Subjects ({subjects.length})</h2>
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold">Subjects ({subjects.length})</h2>
           {hasActiveSubscriptions && (
             <div className="flex items-center gap-2 text-sm">
               <div className="w-2 h-2 bg-green-700 rounded-full animate-pulse"></div>
@@ -543,7 +546,7 @@ export function StreamDetailPage() {
     </div>
 
     {/* Right Side - Live Messages */}
-    <div className="w-full lg:w-1/2 flex flex-col min-h-[400px] lg:min-h-0">
+    <div className="w-full lg:w-1/2 flex flex-col min-h-[300px] lg:min-h-0">
       {/* Active Subscriptions Status - Show when subscriptions are active but no data messages yet */}
       {(() => {
         const activeSubscriptions = Object.entries(subscriptions).filter(([_, sub]) => sub.isActive);
@@ -552,22 +555,22 @@ export function StreamDetailPage() {
         if (activeSubscriptions.length === 0 || hasDataMessages) return null;
         
         return (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
             <div className="flex items-start gap-3">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse mt-2"></div>
               <div className="flex-1">
-                <h3 className="font-medium text-blue-900 mb-2">
+                <h3 className="font-medium text-blue-900 mb-1 text-sm">
                   Waiting for Data Messages
                 </h3>
-                <p className="text-blue-700 text-sm mb-3">
+                <p className="text-blue-700 text-xs mb-2">
                   You have {activeSubscriptions.length} active subscription{activeSubscriptions.length > 1 ? 's' : ''}, 
                   but no data messages have been received yet. Only messages with data content will appear here.
                 </p>
                 <div className="space-y-1">
                   <p className="text-xs text-blue-600 font-medium">Active subscriptions:</p>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1">
                     {activeSubscriptions.map(([subject]) => (
-                      <span key={subject} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                      <span key={subject} className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
                         {subject}
                       </span>
                     ))}
@@ -581,15 +584,15 @@ export function StreamDetailPage() {
 
       {/* Live Messages Panel - Tabbed Interface */}
       <div className="bg-white rounded-lg border border-gray-200 flex-1 flex flex-col overflow-y-auto">
-        <div className="px-4 py-3 bg-gray-50 flex-shrink-0">
-          <div className="flex items-center justify-between mb-3">
+        <div className="px-3 py-2 bg-gray-50 flex-shrink-0">
+          <div className="flex items-center justify-between mb-2">
             {(() => {
               const hasMessages = Object.values(subscriptions).some(sub => sub.messages.length > 0);
               const totalMessages = Object.values(subscriptions).reduce((sum, sub) => sum + sub.messages.length, 0);
               
               return (
                 <>
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-base font-semibold text-gray-900">
                     Live Messages {hasMessages ? `(${totalMessages})` : ''}
                   </h2>
                 </>
@@ -606,8 +609,8 @@ export function StreamDetailPage() {
               defaultValue=""
               className="h-full flex flex-col"
             >
-              <div className="px-4 py-2 border-b bg-gray-50">
-                <TabsList className="h-auto p-1 bg-gray-100">
+              <div className="px-3 py-1 border-b bg-gray-50">
+                <TabsList className="h-auto p-0.5 bg-gray-100">
                   {Object.entries(subscriptions)
                     .filter(([_, sub]) => sub.isActive && sub.messages.length > 0)
                     .map(([subject, subscription]) => (
@@ -763,14 +766,14 @@ export function StreamDetailPage() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b bg-gray-50">
+            <div className="px-4 py-3 border-b bg-gray-50">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">Message Details</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Message Details</h2>
                 <button
                   onClick={closeMessageModal}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -778,27 +781,27 @@ export function StreamDetailPage() {
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-8rem)]">
+            <div className="p-4 overflow-y-auto max-h-[calc(90vh-7rem)]">
               {/* Message Metadata */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-gray-900 mb-2">Subject</h3>
-                  <p className="text-sm font-mono bg-white p-2 rounded border">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <h3 className="font-semibold text-gray-900 mb-2 text-sm">Subject</h3>
+                  <p className="text-xs font-mono bg-white p-2 rounded border">
                     {selectedMessage.subject}
                   </p>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-gray-900 mb-2">Timestamp</h3>
-                  <p className="text-sm font-mono bg-white p-2 rounded border">
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <h3 className="font-semibold text-gray-900 mb-2 text-sm">Timestamp</h3>
+                  <p className="text-xs font-mono bg-white p-2 rounded border">
                     {new Date(selectedMessage.timestamp).toLocaleString()}
                   </p>
                 </div>
               </div>
 
               {/* Message Data */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-900 mb-2">Data</h3>
-                <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto">
+              <div className="mb-4">
+                <h3 className="font-semibold text-gray-900 mb-2 text-sm">Data</h3>
+                <div className="bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto">
                   <pre className="text-sm font-mono whitespace-pre-wrap">
                     {typeof selectedMessage.data === 'string' 
                       ? selectedMessage.data 
