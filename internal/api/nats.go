@@ -3,6 +3,7 @@ package api
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/astergaze-solutions/heynats/internal/infrastructure"
 	"github.com/astergaze-solutions/heynats/internal/pkg"
@@ -50,6 +51,8 @@ func (e *HeyNats) RegisterRoutes() {
 				if cIDStr, ok := cID.(string); ok {
 					connectionID = cIDStr
 					log.Println("Using existing connection for user:", connectionID)
+					// Update activity for existing connection
+					e.conns.UpdateActivity(connectionID)
 				}
 			}
 		} else {
@@ -82,7 +85,7 @@ func (e *HeyNats) RegisterRoutes() {
 			}
 
 			// Store the connection and set HTTP-only cookie
-			e.conns.AddConnection(connectionID, natsConn)
+			e.conns.AddConnection(connectionID, natsConn, &req)
 
 			// Set HTTP-only cookie with secure settings
 			c.SetCookie(
@@ -123,6 +126,47 @@ func (e *HeyNats) RegisterRoutes() {
 		}
 
 		c.JSON(http.StatusOK, info)
+	})
+
+	api.GET("/api/nats/connection/stats", e.middleware.RequireConnection(), func(c *gin.Context) {
+		connectionID, exists := c.Get(ConnectionIDKey)
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"error": "Connection ID not found",
+			})
+			return
+		}
+
+		cID, ok := connectionID.(string)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Invalid connection ID format",
+			})
+			return
+		}
+
+		// Get connection info
+		e.conns.mutex.RLock()
+		connInfo, exists := e.conns.nastsConns[cID]
+		e.conns.mutex.RUnlock()
+
+		if !exists {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Connection not found",
+			})
+			return
+		}
+
+		stats := gin.H{
+			"connection_id":  cID,
+			"last_activity":  connInfo.LastActivity,
+			"idle_timeout":   e.conns.idleTimeout,
+			"time_remaining": e.conns.idleTimeout - time.Since(connInfo.LastActivity),
+			"is_healthy":     connInfo.Connection.IsHealthy(),
+			"is_connected":   connInfo.Connection.Conn != nil && connInfo.Connection.Conn.IsConnected(),
+		}
+
+		c.JSON(http.StatusOK, stats)
 	})
 
 	api.GET("/api/nats/account/info", e.middleware.RequireConnection(), func(c *gin.Context) {

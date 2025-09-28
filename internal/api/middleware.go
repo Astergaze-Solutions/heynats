@@ -16,10 +16,15 @@ func (m *ConnectionMiddleware) Handle() gin.HandlerFunc {
 		cID, err := c.Cookie(ConnectionIDKey)
 		if err == nil && cID != "" {
 			// If a cookie exists, try to find the corresponding connection
-			existingConn, exists := m.conns.GetConnection(cID)
-			if exists && existingConn != nil {
+			// This will automatically reconnect if the connection is dead
+			existingConn, exists, reconnectErr := m.conns.GetOrReconnect(cID)
+			if exists && existingConn != nil && reconnectErr == nil {
 				c.Set(ConnectionIDKey, cID)
 				c.Set(NatsConnectionKey, existingConn)
+			} else if reconnectErr != nil {
+				// Log reconnection failure but don't fail the request
+				// The endpoint handlers will deal with missing connections appropriately
+				c.Header("X-Connection-Status", "reconnect-failed")
 			}
 		}
 		c.Next()
@@ -42,9 +47,19 @@ func (m *ConnectionMiddleware) RequireConnection() gin.HandlerFunc {
 			return
 		}
 
-		existingConn, exists := m.conns.GetConnection(cID)
-		if !exists || existingConn == nil {
+		// Try to get or reconnect the connection
+		existingConn, exists, reconnectErr := m.conns.GetOrReconnect(cID)
+		if !exists {
 			c.JSON(401, gin.H{"error": "Invalid Connection ID"})
+			c.Abort()
+			return
+		}
+
+		if existingConn == nil || reconnectErr != nil {
+			c.JSON(503, gin.H{
+				"error":   "Connection unavailable",
+				"details": "Failed to establish connection to NATS server",
+			})
 			c.Abort()
 			return
 		}

@@ -73,14 +73,25 @@ func (nc *NATSCredential) Connect() error {
 		opts = append(opts, nats.UserInfo(nc.Username, nc.Password))
 	}
 
-	// Add connection options
+	// Add connection options with better reconnection handling
 	opts = append(opts,
 		nats.Name("HeyNATS Web Client"),
 		nats.Timeout(10*time.Second),
 		nats.PingInterval(20*time.Second),
 		nats.MaxPingsOutstanding(5),
 		nats.ReconnectWait(2*time.Second),
-		nats.MaxReconnects(-1), // Unlimited reconnects
+		nats.MaxReconnects(-1),           // Unlimited reconnects
+		nats.ReconnectBufSize(1024*1024), // 1MB buffer for reconnect
+		// Add callbacks for connection events
+		nats.DisconnectErrHandler(func(conn *nats.Conn, err error) {
+			log.Printf("NATS connection disconnected: %v", err)
+		}),
+		nats.ReconnectHandler(func(conn *nats.Conn) {
+			log.Printf("NATS connection reconnected to %s", conn.ConnectedUrl())
+		}),
+		nats.ClosedHandler(func(conn *nats.Conn) {
+			log.Printf("NATS connection closed")
+		}),
 	)
 
 	conn, err := nats.Connect(url, opts...)
@@ -96,6 +107,22 @@ func (nc *NATSCredential) Connect() error {
 
 	nc.JSConn = &js
 	return nil
+}
+
+// IsHealthy checks if the connection is healthy and responsive
+func (nc *NATSCredential) IsHealthy() bool {
+	if nc.Conn == nil {
+		return false
+	}
+
+	// Check if connection is still active
+	if !nc.Conn.IsConnected() {
+		return false
+	}
+
+	// Check if we can flush (send a ping)
+	err := nc.Conn.FlushTimeout(2 * time.Second)
+	return err == nil
 }
 
 func (nc *NATSCredential) Disconnect() {
