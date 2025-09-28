@@ -142,14 +142,6 @@ cd client && pnpm build && cd ..
 go run main.go
 ```
 
-## API Endpoints
-
-The server provides the following API endpoints:
-
-- `GET /api/` - Basic API info with timestamp
-- `GET /api/users` - Sample users data
-- `GET /api/health` - Health check endpoint
-
 ## Development
 
 ### Full Stack Development

@@ -25,3 +25,4 @@ dist-ssr
 
 bin
 nats_data
+tmp
