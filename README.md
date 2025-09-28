@@ -7,10 +7,11 @@
 **A modern, web-based administration interface for NATS Server**
 
 [![Built with React](https://img.shields.io/badge/React-19-blue.svg)](https://reactjs.org/)
-[![Go Version](https://img.shields.io/badge/Go-1.23.4+-00ADD8.svg)](https://golang.org/)
+[![Go Version](https://img.shields.io/badge/Go-1.24.0+-00ADD8.svg)](https://golang.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178C6.svg)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.md)
 
+[Demo](#-demo) •
 [Features](#-features) •
 [Quick Start](#-quick-start) •
 [Installation](#-installation) •
@@ -26,6 +27,33 @@
 HeyNATS is a modern, intuitive web-based administration interface for [NATS Server](https://nats.io/). It provides a user-friendly dashboard to manage NATS connections, streams, consumers, and key-value stores without needing command-line expertise.
 
 Think of it as "phpMyAdmin for NATS" - making NATS server management accessible through a beautiful, responsive web interface.
+
+## 🎮 Demo
+
+Experience HeyNATS without any setup! Try our live demo using the public NATS server:
+
+### 🌐 Quick Demo Setup
+
+**Connection Details:**
+```
+Host: demo.nats.io
+Port: 4222
+Authentication: None required
+```
+
+### 📱 Demo Screenshots
+
+<div align="center">
+
+**Login Screen**
+![Login page with demo credentials](./docs/images/demo_login.png)
+
+**Dashboard Overview**
+![Dashboard page after successful login](./docs/images/dashboard.png)
+
+</div>
+
+> **💡 Tip**: The demo server is public, so you might see data from other users. This is normal and demonstrates HeyNATS's real-time capabilities!
 
 ## ✨ Features
 
@@ -71,7 +99,7 @@ Think of it as "phpMyAdmin for NATS" - making NATS server management accessible 
 - **shadcn/ui** - Beautiful, accessible component library
 
 ### Backend
-- **Go 1.23.4+** - High-performance backend
+- **Go 1.24.0+** - High-performance backend
 - **Gin Framework** - Fast HTTP web framework
 - **NATS Go Client** - Official NATS client library
 - **Graceful Shutdown** - Proper resource cleanup
@@ -104,7 +132,11 @@ heynats/
 
 ## 🚀 Quick Start
 
-The fastest way to get HeyNATS running:
+### Option 1: Try the Demo First! 🎮
+No installation needed - just try HeyNATS with our [demo setup](#-demo) using `demo.nats.io`.
+
+### Option 2: Install Locally
+The fastest way to get HeyNATS running on your machine:
 
 ```bash
 # Clone the repository
@@ -124,7 +156,7 @@ That's it! HeyNATS will be running and ready to connect to your NATS server.
 ### Prerequisites
 
 #### System Requirements
-- **Go 1.24.7 or later** - [Download Go](https://golang.org/dl/)
+- **Go 1.24.0 or later** - [Download Go](https://golang.org/dl/)
 - **Node.js 18+ and pnpm** - [Install Node.js](https://nodejs.org/) and [Install pnpm](https://pnpm.io/installation)
 - **NATS Server** - [Install NATS Server](https://docs.nats.io/running-a-nats-service/introduction/installation)
 
@@ -133,7 +165,7 @@ That's it! HeyNATS will be running and ready to connect to your NATS server.
 npm install -g pnpm
 
 # Verify installations
-go version    # Should be 1.24.7+
+go version    # Should be 1.24.0+
 node --version # Should be 18+
 pnpm --version
 ```
@@ -194,8 +226,15 @@ make dev-full
 1. **Access HeyNATS**: Open http://localhost:5000 in your browser
 
 2. **Create a Connection**: Click "New Connection" and configure:
-   - **Server URL**: `nats://localhost:4222` (default NATS server)
-   - **Name**: Give your connection a friendly name
+
+   **For Demo/Testing:**
+   - **Server URL**: `nats://demo.nats.io:4222`
+   - **Name**: "Demo Server" (or any friendly name)
+   - **Authentication**: Leave blank (no auth required)
+
+   **For Local Development:**
+   - **Server URL**: `nats://localhost:4222` (default local NATS server)
+   - **Name**: "Local NATS" (or any friendly name)
    - **Authentication**: Configure if your NATS server requires auth
 
 3. **Start Managing**: Once connected, you can:
