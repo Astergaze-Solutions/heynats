@@ -55,6 +55,27 @@ func (e *KVAPI) RegisterRoutes() {
 		})
 	})
 
+	api.GET("/api/nats/kv/buckets/:bucket", e.middleware.RequireConnection(), func(c *gin.Context) {
+		bucketName := c.Param("bucket")
+		natsConn, exists := c.Get(NatsConnectionKey)
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+			return
+		}
+
+		conn := natsConn.(*pkg.NATSCredential)
+		bucketInfo, err := conn.GetBucket(bucketName)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "Failed to fetch KV bucket info",
+				"details": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, bucketInfo)
+	})
+
 	// create bucket
 	api.POST("/api/nats/kv/buckets", e.middleware.RequireConnection(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)

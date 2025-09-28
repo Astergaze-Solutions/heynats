@@ -316,7 +316,7 @@ export function KVBucketDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatsCard
                   title="Total Keys"
-                  value={bucket.values.toLocaleString()}
+                  value={bucket.values?.toLocaleString() || 'N/A'}
                   icon={<Hash className="w-4 h-4 text-indigo-600" />}
                 />
                 <StatsCard
