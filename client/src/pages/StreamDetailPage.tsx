@@ -271,7 +271,7 @@ export function StreamDetailPage() {
     );
   }
 
-  const subjects = stream.config.subjects || [];
+  const subjects = stream.config?.subjects || [];
   const hasActiveSubscriptions = Object.values(subscriptions).some(sub => sub.isActive);
 
   return (
@@ -291,7 +291,7 @@ export function StreamDetailPage() {
             Back
           </Button>
           <h1 className="text-3xl font-bold text-gray-900">
-            Stream: {stream.config.name}
+            Stream: {stream.config?.name || 'Unknown'}
           </h1>
         </div>
         <div className="flex gap-2">
@@ -320,17 +320,17 @@ export function StreamDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <StatsCard
           title="Messages"
-          value={stream.state.messages.toLocaleString()}
+          value={(stream.state?.messages || 0).toLocaleString()}
           icon={<BarChart3 className="w-4 h-4 text-blue-600" />}
         />
         <StatsCard
           title="Bytes"
-          value={`${(stream.state.bytes / 1024 / 1024).toFixed(2)} MB`}
+          value={`${((stream.state?.bytes || 0) / 1024 / 1024).toFixed(2)} MB`}
           icon={<HardDrive className="w-4 h-4 text-green-600" />}
         />
         <StatsCard
           title="Consumers"
-          value={stream.state.consumer_count.toString()}
+          value={(stream.state?.consumer_count || 0).toString()}
           icon={<Users className="w-4 h-4 text-purple-600" />}
         />
         <StatsCard
@@ -345,22 +345,22 @@ export function StreamDetailPage() {
         <h2 className="text-xl font-semibold mb-4">Stream Configuration</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
-            <span className="font-medium">Retention:</span> {stream.config.retention}
+            <span className="font-medium">Retention:</span> {stream.config?.retention || 'Unknown'}
           </div>
           <div>
-            <span className="font-medium">Storage:</span> {stream.config.storage}
+            <span className="font-medium">Storage:</span> {stream.config?.storage || 'Unknown'}
           </div>
           <div>
-            <span className="font-medium">Replicas:</span> {stream.config.num_replicas}
+            <span className="font-medium">Replicas:</span> {stream.config?.num_replicas || 0}
           </div>
           <div>
-            <span className="font-medium">Max Messages:</span> {stream.config.max_msgs.toLocaleString()}
+            <span className="font-medium">Max Messages:</span> {(stream.config?.max_msgs || 0).toLocaleString()}
           </div>
           <div>
-            <span className="font-medium">Max Bytes:</span> {(stream.config.max_bytes / 1024 / 1024).toFixed(2)} MB
+            <span className="font-medium">Max Bytes:</span> {((stream.config?.max_bytes || 0) / 1024 / 1024).toFixed(2)} MB
           </div>
           <div>
-            <span className="font-medium">Max Age:</span> {stream.config.max_age ? `${stream.config.max_age}s` : 'No limit'}
+            <span className="font-medium">Max Age:</span> {stream.config?.max_age ? `${stream.config.max_age}s` : 'No limit'}
           </div>
         </div>
       </div>

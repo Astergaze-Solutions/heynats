@@ -152,45 +152,45 @@ export const natsApi = {
 
 // JetStream Stream interfaces
 export interface StreamConfig {
-  name: string;
-  subjects: string[];
-  retention: string;
-  max_consumers: number;
-  max_msgs: number;
-  max_bytes: number;
-  discard: string;
-  max_age: number;
-  max_msgs_per_subject: number;
-  max_msg_size: number;
-  storage: string;
-  num_replicas: number;
-  duplicate_window: number;
-  compression: string;
-  allow_direct: boolean;
-  mirror_direct: boolean;
-  consumer_limits: any;
-  metadata: any;
-  allow_msg_ttl: boolean;
+  name?: string;
+  subjects?: string[];
+  retention?: string;
+  max_consumers?: number;
+  max_msgs?: number;
+  max_bytes?: number;
+  discard?: string;
+  max_age?: number;
+  max_msgs_per_subject?: number;
+  max_msg_size?: number;
+  storage?: string;
+  num_replicas?: number;
+  duplicate_window?: number;
+  compression?: string;
+  allow_direct?: boolean;
+  mirror_direct?: boolean;
+  consumer_limits?: any;
+  metadata?: any;
+  allow_msg_ttl?: boolean;
 }
 
 export interface StreamState {
-  messages: number;
-  bytes: number;
-  first_seq: number;
-  first_ts: string;
-  last_seq: number;
-  last_ts: string;
-  consumer_count: number;
-  deleted: any;
-  num_deleted: number;
-  num_subjects: number;
-  subjects: any;
+  messages?: number;
+  bytes?: number;
+  first_seq?: number;
+  first_ts?: string;
+  last_seq?: number;
+  last_ts?: string;
+  consumer_count?: number;
+  deleted?: any;
+  num_deleted?: number;
+  num_subjects?: number;
+  subjects?: any;
 }
 
 export interface Stream {
-  config: StreamConfig;
-  created: string;
-  state: StreamState;
+  config?: StreamConfig;
+  created?: string;
+  state?: StreamState;
 }
 
 export interface StreamsResponse {

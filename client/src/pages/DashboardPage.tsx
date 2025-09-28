@@ -51,9 +51,9 @@ export function DashboardPage() {
             />
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div>
             {/* Server Information */}
-            <div className="lg:col-span-1">
+            <div>
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">Server Information</h3>
@@ -65,61 +65,61 @@ export function DashboardPage() {
                 </div>
                 
                 {accountInfo?.account_information && (
-                  <dl className="space-y-4">
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Server</dt>
-                      <dd className="mt-1 text-sm text-gray-900 font-mono">
-                        {accountInfo.account_information.server_name}
-                      </dd>
-                      <dd className="text-xs text-gray-500">
-                        v{accountInfo.account_information.server_version}
-                      </dd>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Server</h4>
+                    <div className="text-sm text-gray-900 font-mono">
+                    {accountInfo.account_information.server_name}
                     </div>
-                    
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Connection</dt>
-                      <dd className="mt-1 text-sm text-gray-900 font-mono">
-                        {accountInfo.account_information.connected_url}
-                      </dd>
+                    <div className="text-xs text-gray-500">
+                    v{accountInfo.account_information.server_version}
                     </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Connection</h4>
+                    <div className="text-sm text-gray-900 font-mono">
+                    {accountInfo.account_information.connected_url}
+                    </div>
+                  </div>
 
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Client Info</dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        ID: {accountInfo.account_information.client_id}
-                      </dd>
-                      <dd className="text-xs text-gray-500">
-                        {accountInfo.account_information.client_ip} → {accountInfo.account_information.local_ip}
-                      </dd>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Client Info</h4>
+                    <div className="text-sm text-gray-900">
+                    ID: {accountInfo.account_information.client_id}
                     </div>
+                    <div className="text-xs text-gray-500">
+                    {accountInfo.account_information.client_ip} → {accountInfo.account_information.local_ip}
+                    </div>
+                  </div>
 
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Performance</dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        RTT: <span className="font-mono">{accountInfo.account_information.rtt}</span>
-                      </dd>
-                      <dd className="text-xs text-gray-500">
-                        Max Payload: {accountInfo.account_information.max_payload}
-                      </dd>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Performance</h4>
+                    <div className="text-sm text-gray-900">
+                    RTT: <span className="font-mono">{accountInfo.account_information.rtt}</span>
                     </div>
+                    <div className="text-xs text-gray-500">
+                    Max Payload: {accountInfo.account_information.max_payload}
+                    </div>
+                  </div>
 
-                    <div>
-                      <dt className="text-sm font-medium text-gray-500">Security</dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        User: {accountInfo.account_information.user}
-                      </dd>
-                      <dd className="text-xs text-gray-500">
-                        Headers: {accountInfo.account_information.header_supported ? 'Supported' : 'Not supported'}
-                      </dd>
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500">Security</h4>
+                    <div className="text-sm text-gray-900">
+                    User: {accountInfo.account_information.user}
                     </div>
-                  </dl>
+                    <div className="text-xs text-gray-500">
+                    Headers: {accountInfo.account_information.header_supported ? 'Supported' : 'Not supported'}
+                    </div>
+                  </div>
+                  </div>
                 )}
               </div>
             </div>
 
             {/* Connections List */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="mt-6">
+              <div className="bg-white rounded-lg border border-gray-200 p-6 overflow-y-auto" style={{ maxHeight: '600px' }}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900">
                     Active Connections

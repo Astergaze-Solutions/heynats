@@ -56,19 +56,22 @@ export function StreamsPage() {
 
   const streams = streamsData?.streams || [];
   const filteredStreams = streams.filter(stream =>
-    stream.config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    stream.config.subjects.some(subject => 
+    (stream.config?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    stream.config?.subjects?.some(subject => 
       subject.toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
 
   // Calculate aggregate statistics
-  const totalMessages = streams.reduce((sum, stream) => sum + stream.state.messages, 0);
-  const totalConsumers = streams.reduce((sum, stream) => sum + stream.state.consumer_count, 0);
-  const totalSubjects = streams.reduce((sum, stream) => sum + stream.config.subjects.length, 0);
+  const totalMessages = streams.reduce((sum, stream) => sum + (stream.state?.messages || 0), 0);
+  const totalConsumers = streams.reduce((sum, stream) => sum + (stream.state?.consumer_count || 0), 0);
+  const totalSubjects = streams.reduce((sum, stream) => sum + (stream.config?.subjects?.length || 0), 0);
 
   const handleViewDetails = (stream: Stream) => {
-    navigate(`/dashboard/streams/${encodeURIComponent(stream.config.name)}`);
+    const streamName = stream.config?.name;
+    if (streamName) {
+      navigate(`/dashboard/streams/${encodeURIComponent(streamName)}`);
+    }
   };
 
   const handleCreateStream = async (config: Partial<StreamConfig>) => {
@@ -212,9 +215,9 @@ export function StreamsPage() {
           </div>
         ) : filteredStreams.length > 0 ? (
           <div className="space-y-6">
-            {filteredStreams.map((stream) => (
+            {filteredStreams.map((stream, streamIndex) => (
               <StreamCard
-                key={stream.config.name}
+                key={stream.config?.name || `stream-${streamIndex}`}
                 stream={stream}
                 onViewDetails={handleViewDetails}
                 onDelete={handleDeleteStream}
