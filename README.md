@@ -1,187 +1,324 @@
-# Hey Nats
-Web based User interface for the NATs
+# HeyNATS 🚀
 
-## Tech Stack
-- **Backend**: Golang with Gin framework
-- **Frontend**: React 19 with TypeScript, TailwindCSS 4, and ShadCN UI
-- **Build Tool**: Vite
+<div align="center">
 
-## Project Structure
+![HeyNATS Logo](client/public/heynats.png)
+
+**A modern, web-based administration interface for NATS Server**
+
+[![Built with React](https://img.shields.io/badge/React-19-blue.svg)](https://reactjs.org/)
+[![Go Version](https://img.shields.io/badge/Go-1.23.4+-00ADD8.svg)](https://golang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178C6.svg)](https://www.typescriptlang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.md)
+
+[Features](#-features) •
+[Quick Start](#-quick-start) •
+[Installation](#-installation) •
+[Documentation](#-documentation) •
+[Contributing](#-contributing)
+
+</div>
+
+---
+
+## 📖 What is HeyNATS?
+
+HeyNATS is a modern, intuitive web-based administration interface for [NATS Server](https://nats.io/). It provides a user-friendly dashboard to manage NATS connections, streams, consumers, and key-value stores without needing command-line expertise.
+
+Think of it as "phpMyAdmin for NATS" - making NATS server management accessible through a beautiful, responsive web interface.
+
+## ✨ Features
+
+### 🔌 **Connection Management**
+- Connect to multiple NATS servers simultaneously
+- Support for authentication (user/password, token, JWT)
+- Real-time connection status monitoring
+- Connection pooling and management
+
+### 📊 **JetStream Administration**
+- **Stream Management**: Create, view, edit, and delete streams
+- **Consumer Management**: Monitor and manage stream consumers
+- **Message Publishing**: Send messages to streams and subjects
+- **Message Consumption**: Subscribe to streams and view real-time messages
+
+### 🗄️ **Key-Value Store Operations**
+- Create and manage KV buckets
+- Browse, add, edit, and delete key-value pairs
+- Real-time KV operations monitoring
+- Bucket configuration management
+
+### 📈 **Monitoring & Analytics**
+- Real-time server statistics and metrics
+- Stream and consumer performance monitoring
+- Message flow visualization
+- Connection health dashboards
+
+### 🎨 **Modern UI/UX**
+- Responsive design that works on desktop, tablet, and mobile
+- Dark/light theme support
+- Intuitive navigation and user experience
+- Real-time updates without page refresh
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **React 19** - Modern React with latest features
+- **TypeScript** - Type-safe development
+- **React Router v7** - Advanced routing with loaders
+- **TanStack Query** - Server state management and caching
+- **TailwindCSS 4** - Utility-first styling
+- **Vite** - Lightning-fast build tool
+- **shadcn/ui** - Beautiful, accessible component library
+
+### Backend
+- **Go 1.23.4+** - High-performance backend
+- **Gin Framework** - Fast HTTP web framework
+- **NATS Go Client** - Official NATS client library
+- **Graceful Shutdown** - Proper resource cleanup
+
+## 🏗️ Project Structure
+
 ```
-├── main.go              # Gin server
-├── client/              # React frontend
+heynats/
+├── main.go                 # Go server entry point
+├── internal/              # Backend Go modules
+│   ├── api/              # API handlers (NATS, KV, Streams)
+│   ├── infrastructure/   # Router and middleware
+│   ├── model/           # Data models
+│   └── pkg/             # NATS client package
+├── client/               # React frontend application
 │   ├── src/
+│   │   ├── components/  # Reusable UI components
+│   │   ├── pages/       # Page components
+│   │   ├── hooks/       # Custom React hooks
+│   │   ├── lib/         # Utilities and API client
+│   │   └── providers/   # Context providers
 │   ├── dist/            # Built frontend (served by Gin)
 │   └── package.json
+├── docs/                # Documentation
 ├── Makefile             # Build automation
-├── build-and-run.sh     # Build and run script
-└── go.mod
+├── build-and-run.sh     # Quick start script
+├── dev.sh              # Development mode script
+└── docker-compose.yml  # Docker setup
 ```
 
-## System Requirements & Installation
+## 🚀 Quick Start
+
+The fastest way to get HeyNATS running:
+
+```bash
+# Clone the repository
+git clone https://github.com/Astergaze-Solutions/heynats.git
+cd heynats
+
+# Quick build and run (recommended for first-time users)
+./build-and-run.sh
+
+# Open your browser to http://localhost:5000
+```
+
+That's it! HeyNATS will be running and ready to connect to your NATS server.
+
+## 💻 Installation
 
 ### Prerequisites
 
-#### Required System Dependencies
-- **Go 1.23.4 or later** - [Download Go](https://golang.org/dl/)
+#### System Requirements
+- **Go 1.24.7 or later** - [Download Go](https://golang.org/dl/)
 - **Node.js 18+ and pnpm** - [Install Node.js](https://nodejs.org/) and [Install pnpm](https://pnpm.io/installation)
-  ```bash
-  # Install pnpm globally
-  npm install -g pnpm
-  ```
+- **NATS Server** - [Install NATS Server](https://docs.nats.io/running-a-nats-service/introduction/installation)
 
-#### Development Tools (Optional but Recommended)
-
-##### Git Hooks Management
-- **lefthook** - Git hooks manager for automated code quality checks
-  ```bash
-  # Install lefthook
-  go install github.com/evilmartians/lefthook@latest
-  # or via homebrew on macOS
-  brew install lefthook
-  
-  # Install hooks after cloning the repo
-  lefthook install
-  ```
-
-##### Go Development Tools
-- **goimports** - Automatic Go imports management
-  ```bash
-  go install golang.org/x/tools/cmd/goimports@latest
-  ```
-- **golangci-lint** - Go linters aggregator (for pre-push hooks)
-  ```bash
-  # macOS
-  brew install golangci-lint
-  # or
-  go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-  ```
-- **air** - Live reload for Go development (optional)
-  ```bash
-  go install github.com/cosmtrek/air@latest
-  ```
-
-##### Commit Message Linting (Optional)
-- **commitlint** - Ensures conventional commit messages
-  ```bash
-  npm install -g @commitlint/cli @commitlint/config-conventional
-  ```
-
-### What lefthook provides
-This project uses lefthook for Git hooks automation:
-- **Pre-commit hooks**: Auto-formatting (Go, React/TS), linting, Go vet, mod tidy
-- **Pre-push hooks**: Comprehensive linting, testing, type checking, build verification
-- **Commit-msg hooks**: Conventional commit message validation
-
-## Getting Started
-
-### Initial Setup
-
-1. **Install system dependencies** (see Prerequisites above)
-2. **Clone and setup the project**:
-   ```bash
-   git clone <repository-url>
-   cd heynats
-   
-   # Install project dependencies
-   make install
-   
-   # Setup Git hooks (optional but recommended)
-   lefthook install
-   ```
-
-### Quick Start
-
-#### Option 1: Using the build script (Recommended for production)
 ```bash
-# Build React client and start Gin server
-./build-and-run.sh
+# Install pnpm globally
+npm install -g pnpm
+
+# Verify installations
+go version    # Should be 1.24.7+
+node --version # Should be 18+
+pnpm --version
 ```
 
-#### Option 2: Using Makefile
+### Full Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Astergaze-Solutions/heynats.git
+   cd heynats
+   ```
+
+2. **Install dependencies**
+   ```bash
+   # Install all dependencies (Go + Node.js)
+   make install
+   
+   # Or manually:
+   go mod tidy
+   cd client && pnpm install && cd ..
+   ```
+
+3. **Setup development tools** (Optional but recommended)
+   ```bash
+   # Install lefthook for Git hooks
+   go install github.com/evilmartians/lefthook@latest
+   lefthook install
+   
+   # Install Go development tools
+   go install golang.org/x/tools/cmd/goimports@latest
+   go install github.com/air-verse/air@latest  # For hot reload
+   ```
+
+## 🎯 Usage
+
+### Starting HeyNATS
+
+#### Option 1: Production Build (Recommended)
 ```bash
+# Build and run in one command
+./build-and-run.sh
+
+# Or using Makefile
+make run
+```
+
+#### Option 2: Development Mode (Hot Reload)
+```bash
+# Start both frontend and backend with hot reload
+./dev.sh
+
+# Or using Makefile
+make dev-full
+```
+
+### Connecting to NATS Server
+
+1. **Access HeyNATS**: Open http://localhost:5000 in your browser
+
+2. **Create a Connection**: Click "New Connection" and configure:
+   - **Server URL**: `nats://localhost:4222` (default NATS server)
+   - **Name**: Give your connection a friendly name
+   - **Authentication**: Configure if your NATS server requires auth
+
+3. **Start Managing**: Once connected, you can:
+   - Create and manage JetStream streams
+   - Publish and subscribe to messages
+   - Manage Key-Value stores
+   - Monitor server statistics
+
+### Available URLs
+- **Web Interface**: http://localhost:5000
+- **API Endpoints**: http://localhost:5000/api/*
+- **React Dev Server** (dev mode): http://localhost:5173
+
+## 🔧 Development
+
+### Available Commands
+
+```bash
+# Development
+make dev-full        # Start both frontend and backend with hot reload
+make dev            # Start only React dev server
+./dev.sh            # Alternative script for development mode
+
+# Production
+make run            # Build and run production version
+./build-and-run.sh  # Quick production build script
+
+# Building
+make build          # Build both frontend and backend
+make build-client   # Build only React frontend
+
+# Utilities
+make install        # Install all dependencies
+make clean          # Clean build artifacts
+make help          # Show all available commands
+```
+
+### Development Architecture
+
+- **Frontend**: React dev server runs on `:5173` with hot reload and proxies API calls to `:5000`
+- **Backend**: Go server runs on `:5000` serving both API endpoints and static files
+- **Live Reload**: Frontend changes reflect immediately, backend changes require restart (use `air` for hot reload)
+
+## 🐳 Docker Support
+
+Run HeyNATS with Docker Compose:
+
+```bash
+# Start HeyNATS with NATS server
+docker-compose up -d
+
+# Access at http://localhost:5000
+# NATS server available at nats://localhost:4222
+```
+
+## 📚 Documentation
+
+- [Architecture Overview](docs/ARCHITECTURE.md) - Detailed technical architecture
+- [Connection Management](docs/CONNECTION_MANAGEMENT.md) - NATS connection handling
+- [Frontend Integration](docs/FRONTEND_INTEGRATION.md) - React and API integration
+- [UI Improvements](docs/UI_IMPROVEMENTS.md) - UI/UX design decisions
+
+## 🧪 Testing
+
+```bash
+# Run Go tests
+go test ./...
+
+# Run frontend tests
+cd client && pnpm test
+
+# Run linting
+make lint           # Lint both Go and TypeScript
+cd client && pnpm lint  # Frontend only
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our contributing guidelines:
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+### Development Setup for Contributors
+
+```bash
+# Clone your fork
+git clone https://github.com/your-username/heynats.git
+cd heynats
+
 # Install dependencies
 make install
 
-# Production: Build and run
-make run
+# Setup pre-commit hooks
+lefthook install
 
-# Development: Run both client and server in dev mode
+# Start development
 make dev-full
-
-# Other commands
-make build-client    # Build React client only
-make dev            # Run React in development mode only
-make clean          # Clean build artifacts
-make help           # Show all available commands
 ```
 
-#### Option 3: Development mode (with hot reload)
-```bash
-# Run both client (with hot reload) and server
-./dev.sh
+## 📄 License
 
-# Or manually:
-# Terminal 1: Start Go server
-go run main.go
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
 
-# Terminal 2: Start React dev server
-cd client && pnpm dev
-```
+## 🙏 Acknowledgments
 
-#### Option 4: Manual production steps
-```bash
-# Install dependencies
-go mod tidy
-cd client && pnpm install && cd ..
+- **NATS.io** - For the amazing NATS messaging system
+- **Adminer** - UI/UX inspiration for database administration tools
+- **shadcn/ui** - Beautiful component library
+- **TailwindCSS** - Utility-first CSS framework
 
-# Build React client
-cd client && pnpm build && cd ..
+## 📞 Support
 
-# Run Gin server (serves built React app)
-go run main.go
-```
+- **Issues**: [GitHub Issues](https://github.com/Astergaze-Solutions/heynats/issues)
+- **Documentation**: [docs/](docs/)
+- **NATS Community**: [NATS Slack](https://nats.io/community/)
 
-## Development
+---
 
-### Full Stack Development
-```bash
-# Run both client and server in development mode
-./dev.sh
-# or
-make dev-full
-
-# This will start:
-# - React dev server on http://localhost:5173 (with hot reload)
-# - Go server on http://localhost:5000 (serving API and production build)
-# - API proxy from React dev server to Go server
-```
-
-### Frontend Only Development
-```bash
-# Run React in development mode (with hot reload)
-cd client && pnpm dev
-# or
-make dev
-```
-
-### Backend Development (with auto-reload)
-```bash
-# Install air for Go hot reload (optional)
-go install github.com/cosmtrek/air@latest
-
-# Run with hot reload
-air
-```
-
-### Development URLs
-- **React Dev Server**: http://localhost:5173 (hot reload, API proxied to :5000)
-- **Go Server**: http://localhost:5000 (production build + API)
-- **API Endpoints**: http://localhost:5000/api/*
-
-## Production
-
-The Gin server serves the built React application and handles both static files and API routes. The React app is built into the `client/dist` directory and served at the root path `/`, while API routes are available under `/api/`.
-
-## Inspiration
-- Adminer
+<div align="center">
+  <p>Made with ❤️ by the <a href="https://github.com/Astergaze-Solutions">Astergaze Solutions</a> team</p>
+  <p>⭐ Star this project if you find it helpful!</p>
+</div>
