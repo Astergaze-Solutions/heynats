@@ -54,8 +54,36 @@ export function StreamDetailPage() {
     enabled: !!streamName,
   });
 
+  // Get subjects and active messages for virtualization (must be called before any early returns)
+  const subjects = stream?.config?.subjects || [];
+  
+  // Get visible messages for active tab
+  const activeMessages = useMemo(() => {
+    if (!activeTab || !subscriptions[activeTab]) return [];
+    return subscriptions[activeTab].messages.slice(-200); // Show last 200 messages
+  }, [subscriptions, activeTab]);
+
+  // Virtualization constants
+  const SUBJECT_ITEM_HEIGHT = 80; // Approximate height of each subject item
+
+  // Virtualize subjects list - MUST be called before any early returns
+  const subjectsVirtualizer = useVirtualizer({
+    count: subjects.length,
+    getScrollElement: () => subjectsContainerRef.current,
+    estimateSize: () => SUBJECT_ITEM_HEIGHT,
+  });
+
+  // Note: Removed message virtualization to fix scrolling issues
+  // For better UX, we'll render the last 200 messages directly
+
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
     setShowJumpToLatest(false);
   };
 
@@ -227,20 +255,28 @@ export function StreamDetailPage() {
   // Auto-scroll to bottom when new messages arrive (only if user is near bottom)
   useEffect(() => {
     if (activeTab && subscriptions[activeTab]?.messages.length > 0) {
-      // Check if container is scrolled to bottom
-      const container = messagesContainerRef.current;
-      if (container) {
-        const { scrollTop, scrollHeight, clientHeight } = container;
-        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-        
-        if (distanceFromBottom <= 100) {
-          // User is near bottom, auto-scroll and hide button
-          scrollToBottom();
-        } else {
-          // User is not at bottom, show the jump button
-          setShowJumpToLatest(true);
+      // Small delay to ensure DOM has updated
+      const timeoutId = setTimeout(() => {
+        const container = messagesContainerRef.current;
+        if (container) {
+          const { scrollTop, scrollHeight, clientHeight } = container;
+          const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+          
+          if (distanceFromBottom <= 100) {
+            // User is near bottom, auto-scroll and hide button
+            container.scrollTo({
+              top: scrollHeight,
+              behavior: 'smooth'
+            });
+            setShowJumpToLatest(false);
+          } else {
+            // User is not at bottom, show the jump button
+            setShowJumpToLatest(true);
+          }
         }
-      }
+      }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [subscriptions, activeTab]);
 
@@ -275,33 +311,7 @@ export function StreamDetailPage() {
     );
   }
 
-  const subjects = stream.config?.subjects || [];
   const hasActiveSubscriptions = Object.values(subscriptions).some(sub => sub.isActive);
-
-  // Virtualization constants
-  const SUBJECT_ITEM_HEIGHT = 80; // Approximate height of each subject item
-  const MESSAGE_ITEM_HEIGHT = 60; // Approximate height of each message item
-
-  // Virtualize subjects list
-  const subjectsVirtualizer = useVirtualizer({
-    count: subjects.length,
-    getScrollElement: () => subjectsContainerRef.current,
-    estimateSize: () => SUBJECT_ITEM_HEIGHT,
-  });
-
-  // Get visible messages for active tab
-  const activeMessages = useMemo(() => {
-    if (!activeTab || !subscriptions[activeTab]) return [];
-    return subscriptions[activeTab].messages.slice(-200); // Show last 200 messages
-  }, [subscriptions, activeTab]);
-
-  // Virtualize messages list
-  const messagesVirtualizer = useVirtualizer({
-    count: activeMessages.length,
-    getScrollElement: () => messagesContainerRef.current,
-    estimateSize: () => MESSAGE_ITEM_HEIGHT,
-  });
-
 
 
   return (
@@ -629,22 +639,17 @@ export function StreamDetailPage() {
                         className="h-full overflow-y-auto"
                         onScroll={handleScroll}
                       >
-                        <div style={{ height: messagesVirtualizer.getTotalSize() }}>
-                          {subject === activeTab && messagesVirtualizer.getVirtualItems().map((virtualItem) => {
-                            const message = activeMessages[virtualItem.index];
+                        <div className="space-y-1 p-2">
+                          {subject === activeTab && activeMessages.map((message, index) => {
                             const dataStr = typeof message.data === 'string' ? message.data : JSON.stringify(message.data);
                             const isLongData = dataStr?.length > 100;
                             const previewData = isLongData ? `${dataStr.substring(0, 100)}...` : dataStr;
                             
                             return (
                               <div
-                                key={virtualItem.key}
+                                key={`message-${activeTab}-${index}-${message.timestamp}`}
                                 onClick={() => openMessageModal(message)}
-                                className="absolute top-0 left-0 w-full px-4 py-2 hover:bg-blue-50 transition-all duration-200 cursor-pointer border-l-4 border-transparent hover:border-blue-400 hover:shadow-sm group border-b border-gray-100"
-                                style={{
-                                  height: virtualItem.size,
-                                  transform: `translateY(${virtualItem.start}px)`,
-                                }}
+                                className="px-4 py-2 hover:bg-blue-50 transition-all duration-200 cursor-pointer border-l-4 border-transparent hover:border-blue-400 hover:shadow-sm group border-b border-gray-100 last:border-b-0"
                               >
                                 <div className="flex items-center gap-3">
                                   <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
@@ -652,7 +657,7 @@ export function StreamDetailPage() {
                                   </span>
                                   
                                   <div className="flex-1 bg-gray-900 text-gray-100 p-2 rounded text-xs font-mono overflow-hidden">
-                                    <div className="break-words whitespace-pre-wrap truncate">
+                                    <div className="break-words whitespace-pre-wrap">
                                       {previewData}
                                     </div>
                                   </div>
@@ -679,9 +684,9 @@ export function StreamDetailPage() {
                         </div>
                         
                         {/* Scroll indicator for messages */}
-                        {activeMessages.length > 10 && (
-                          <div className="absolute bottom-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
-                            Showing {messagesVirtualizer.getVirtualItems().length} of {activeMessages.length}
+                        {activeMessages.length > 50 && (
+                          <div className="sticky bottom-2 right-2 ml-auto w-fit bg-gray-800 text-white text-xs px-2 py-1 rounded mb-2 mr-2">
+                            Showing {activeMessages.length} messages
                           </div>
                         )}
                         

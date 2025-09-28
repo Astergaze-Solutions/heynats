@@ -1,9 +1,11 @@
 services:
   app:
-    image: mukezhz/heynats:latest
+    build: .
     container_name: heynats_app
     ports:
       - "5000:5000"
+    environment:
+      - NATS_URL=nats://nats:4222
     depends_on:
       - nats
   nats:
@@ -11,6 +13,8 @@ services:
     container_name: heynats_server
     volumes:
       - ./nats_data:/tmp/jetstream
+      - ./nats.conf:/app/nats.conf
+    command: -c /app/nats.conf
     ports:
       - "4222:4222"
       - "8222:8222"
