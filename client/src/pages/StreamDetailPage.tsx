@@ -315,8 +315,9 @@ export function StreamDetailPage() {
 
 
   return (
-    <div className="p-6 max-w-full mx-auto">
-      <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-8rem)]">
+    <div className="p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-8rem)]">
         {/* Left Side - Main Content */}
         <div className="flex-1 overflow-y-auto lg:w-1/2">
           {/* Header */}
@@ -381,7 +382,7 @@ export function StreamDetailPage() {
       </div>
 
       {/* Stream Configuration */}
-      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
         <h2 className="text-xl font-semibold mb-4">Stream Configuration</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
@@ -406,12 +407,12 @@ export function StreamDetailPage() {
       </div>
 
       {/* Virtualized Subjects List */}
-      <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Subjects ({subjects.length})</h2>
           {hasActiveSubscriptions && (
             <div className="flex items-center gap-2 text-sm">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-green-700 rounded-full animate-pulse"></div>
               <span className="text-green-600">
                 {Object.values(subscriptions).filter(sub => sub.isActive).length} active subscriptions
               </span>
@@ -424,7 +425,7 @@ export function StreamDetailPage() {
         ) : (
           <div 
             ref={subjectsContainerRef}
-            className="relative h-96 overflow-auto border rounded-lg"
+            className="relative h-96 overflow-auto border border-gray-200 rounded-lg"
           >
             <div style={{ height: subjectsVirtualizer.getTotalSize() }}>
               {subjectsVirtualizer.getVirtualItems().map((virtualItem) => {
@@ -579,8 +580,8 @@ export function StreamDetailPage() {
       })()}
 
       {/* Live Messages Panel - Tabbed Interface */}
-      <div className="bg-white rounded-lg shadow-sm border flex-1 flex flex-col overflow-y-auto">
-        <div className="px-4 py-3 border-b bg-gray-50 flex-shrink-0">
+      <div className="bg-white rounded-lg border border-gray-200 flex-1 flex flex-col overflow-y-auto">
+        <div className="px-4 py-3 bg-gray-50 flex-shrink-0">
           <div className="flex items-center justify-between mb-3">
             {(() => {
               const hasMessages = Object.values(subscriptions).some(sub => sub.messages.length > 0);
@@ -849,6 +850,7 @@ export function StreamDetailPage() {
           </div>
         </div>
       )}
+        </div>
       </div>
     </div>
   );
