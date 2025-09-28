@@ -14,7 +14,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-type NATSConnection struct {
+type NATSCredential struct {
 	Conn     *nats.Conn
 	JSConn   *nats.JetStreamContext
 	Host     string `json:"host"`
@@ -62,7 +62,7 @@ type KVBucketsStats struct {
 	// Created      time.Time `json:"created"`       // Time bucket was created
 }
 
-func (nc *NATSConnection) Connect() error {
+func (nc *NATSCredential) Connect() error {
 	var opts []nats.Option
 
 	// Build connection URL
@@ -98,13 +98,13 @@ func (nc *NATSConnection) Connect() error {
 	return nil
 }
 
-func (nc *NATSConnection) Disconnect() {
+func (nc *NATSCredential) Disconnect() {
 	if nc.Conn != nil && nc.Conn.IsConnected() {
 		nc.Conn.Close()
 	}
 }
 
-func (nc *NATSConnection) GetInfo() (*NATSInfo, error) {
+func (nc *NATSCredential) GetInfo() (*NATSInfo, error) {
 	if nc.Conn == nil || !nc.Conn.IsConnected() {
 		return &NATSInfo{IsConnected: false}, nil
 	}
@@ -129,7 +129,7 @@ func (nc *NATSConnection) GetInfo() (*NATSInfo, error) {
 	return info, nil
 }
 
-func (nc *NATSConnection) GetAccountInfo() (*AccountInfo, error) {
+func (nc *NATSCredential) GetAccountInfo() (*AccountInfo, error) {
 	if nc.Conn == nil || !nc.Conn.IsConnected() {
 		return nil, fmt.Errorf("not connected to NATS server")
 	}
@@ -179,7 +179,7 @@ func (nc *NATSConnection) GetAccountInfo() (*AccountInfo, error) {
 	}, nil
 }
 
-func (nc *NATSConnection) TestConnection() error {
+func (nc *NATSCredential) TestConnection() error {
 	// Test basic connectivity with a ping
 	if nc.Conn == nil || !nc.Conn.IsConnected() {
 		return fmt.Errorf("not connected to NATS server")
@@ -189,7 +189,7 @@ func (nc *NATSConnection) TestConnection() error {
 	return nc.Conn.FlushTimeout(2 * time.Second)
 }
 
-func (nc *NATSConnection) infoAction() map[string]any {
+func (nc *NATSCredential) infoAction() map[string]any {
 
 	id, _ := nc.Conn.GetClientID()
 	ip, _ := nc.Conn.GetClientIP()
@@ -278,7 +278,7 @@ func (nc *NATSConnection) infoAction() map[string]any {
 	return accountInfo
 }
 
-func (nc *NATSConnection) ListBucketsWithStats() ([]KVBucketsStats, error) {
+func (nc *NATSCredential) ListBucketsWithStats() ([]KVBucketsStats, error) {
 	if nc.JSConn == nil {
 		return nil, fmt.Errorf("JetStream not initialized")
 	}
@@ -312,7 +312,7 @@ func (nc *NATSConnection) ListBucketsWithStats() ([]KVBucketsStats, error) {
 	return stats, nil
 }
 
-func (nc *NATSConnection) CreateBucket(bucketName string) error {
+func (nc *NATSCredential) CreateBucket(bucketName string) error {
 	if nc.JSConn == nil {
 		return fmt.Errorf("JetStream not initialized")
 	}
@@ -326,7 +326,7 @@ func (nc *NATSConnection) CreateBucket(bucketName string) error {
 }
 
 // GetBucket returns detailed information about a specific KV bucket
-func (nc *NATSConnection) GetBucket(bucketName string) (*KVBucketsStats, error) {
+func (nc *NATSCredential) GetBucket(bucketName string) (*KVBucketsStats, error) {
 	js := *nc.JSConn
 	if js == nil {
 		return nil, fmt.Errorf("JetStream not initialized")
@@ -362,7 +362,7 @@ type KVEntry struct {
 }
 
 // GetBucketKeys returns all keys in a bucket
-func (nc *NATSConnection) GetBucketKeys(bucketName string) ([]KVEntry, error) {
+func (nc *NATSCredential) GetBucketKeys(bucketName string) ([]KVEntry, error) {
 	js := *nc.JSConn
 	if js == nil {
 		return nil, fmt.Errorf("JetStream not initialized")
@@ -404,7 +404,7 @@ func (nc *NATSConnection) GetBucketKeys(bucketName string) ([]KVEntry, error) {
 }
 
 // GetKey returns a specific key's value
-func (nc *NATSConnection) GetKey(bucketName, key string) (*KVEntry, error) {
+func (nc *NATSCredential) GetKey(bucketName, key string) (*KVEntry, error) {
 	js := *nc.JSConn
 	if js == nil {
 		return nil, fmt.Errorf("JetStream not initialized")
@@ -429,7 +429,7 @@ func (nc *NATSConnection) GetKey(bucketName, key string) (*KVEntry, error) {
 }
 
 // SetKey sets a key's value
-func (nc *NATSConnection) SetKey(bucketName, key, value string) (*KVEntry, error) {
+func (nc *NATSCredential) SetKey(bucketName, key, value string) (*KVEntry, error) {
 	js := *nc.JSConn
 	if js == nil {
 		return nil, fmt.Errorf("JetStream not initialized")
@@ -465,7 +465,7 @@ func (nc *NATSConnection) SetKey(bucketName, key, value string) (*KVEntry, error
 	}, nil
 }
 
-func (nc *NATSConnection) ListStreams() ([]*nats.StreamInfo, error) {
+func (nc *NATSCredential) ListStreams() ([]*nats.StreamInfo, error) {
 	if nc.Conn == nil || !nc.Conn.IsConnected() {
 		return nil, fmt.Errorf("not connected to NATS server")
 	}
@@ -486,7 +486,7 @@ func (nc *NATSConnection) ListStreams() ([]*nats.StreamInfo, error) {
 	return streamNames, nil
 }
 
-func (nc *NATSConnection) ListConsumers(stream string) ([]*nats.ConsumerInfo, error) {
+func (nc *NATSCredential) ListConsumers(stream string) ([]*nats.ConsumerInfo, error) {
 	if nc.Conn == nil || !nc.Conn.IsConnected() {
 		return nil, fmt.Errorf("not connected to NATS server")
 	}
@@ -502,7 +502,7 @@ func (nc *NATSConnection) ListConsumers(stream string) ([]*nats.ConsumerInfo, er
 	return consumerList, nil
 }
 
-func (nc *NATSConnection) GetStreamInfo(stream string) (*nats.StreamInfo, error) {
+func (nc *NATSCredential) GetStreamInfo(stream string) (*nats.StreamInfo, error) {
 	if nc.Conn == nil || !nc.Conn.IsConnected() {
 		return nil, fmt.Errorf("not connected to NATS server")
 	}
@@ -537,7 +537,7 @@ type StreamConfig struct {
 	MaxConsumers int      `json:"max_consumers"`
 }
 
-func (nc *NATSConnection) CreateStream(config *StreamConfig) (*nats.StreamInfo, error) {
+func (nc *NATSCredential) CreateStream(config *StreamConfig) (*nats.StreamInfo, error) {
 	if nc.Conn == nil || !nc.Conn.IsConnected() {
 		return nil, fmt.Errorf("not connected to NATS server")
 	}
@@ -612,12 +612,12 @@ func (nc *NATSConnection) CreateStream(config *StreamConfig) (*nats.StreamInfo, 
 }
 
 // IsConnected checks if the NATS connection is active
-func (nc *NATSConnection) IsConnected() bool {
+func (nc *NATSCredential) IsConnected() bool {
 	return nc.Conn != nil && nc.Conn.IsConnected()
 }
 
 // SubscribeToSubject subscribes to a NATS subject and calls the callback for each message
-func (nc *NATSConnection) SubscribeToSubject(subject string, callback func(data []byte, headers map[string]string)) (*nats.Subscription, error) {
+func (nc *NATSCredential) SubscribeToSubject(subject string, callback func(data []byte, headers map[string]string)) (*nats.Subscription, error) {
 	if nc.Conn == nil || !nc.Conn.IsConnected() {
 		return nil, fmt.Errorf("not connected to NATS server")
 	}
@@ -659,7 +659,7 @@ func GetCurrentTimestamp() string {
 }
 
 // DeleteStream deletes a JetStream stream
-func (nc *NATSConnection) DeleteStream(streamName string) error {
+func (nc *NATSCredential) DeleteStream(streamName string) error {
 	if nc.Conn == nil || !nc.Conn.IsConnected() {
 		return fmt.Errorf("not connected to NATS server")
 	}
@@ -679,7 +679,7 @@ func (nc *NATSConnection) DeleteStream(streamName string) error {
 }
 
 // DeleteBucket removes a KV bucket entirely.
-func (nc *NATSConnection) DeleteBucket(bucketName string) error {
+func (nc *NATSCredential) DeleteBucket(bucketName string) error {
 	stream := *nc.JSConn
 	if stream == nil {
 		return fmt.Errorf("JetStream not initialized")
@@ -688,7 +688,7 @@ func (nc *NATSConnection) DeleteBucket(bucketName string) error {
 	return stream.DeleteKeyValue(bucketName)
 }
 
-func (nc *NATSConnection) PutValue(bucket, key string, value []byte) (uint64, error) {
+func (nc *NATSCredential) PutValue(bucket, key string, value []byte) (uint64, error) {
 	if nc.JSConn == nil {
 		return 0, fmt.Errorf("JetStream not initialized")
 	}
@@ -701,7 +701,7 @@ func (nc *NATSConnection) PutValue(bucket, key string, value []byte) (uint64, er
 	return kv.Put(key, value)
 }
 
-func (nc *NATSConnection) ListKeyValues(bucket string, page, pageSize int) ([]struct {
+func (nc *NATSCredential) ListKeyValues(bucket string, page, pageSize int) ([]struct {
 	Key   string      `json:"key"`
 	Value interface{} `json:"value"`
 }, error) {
@@ -763,7 +763,7 @@ func (nc *NATSConnection) ListKeyValues(bucket string, page, pageSize int) ([]st
 	return result, nil
 }
 
-func (nc *NATSConnection) GetValue(bucket, key string) ([]byte, error) {
+func (nc *NATSCredential) GetValue(bucket, key string) ([]byte, error) {
 	if nc.JSConn == nil {
 		return nil, fmt.Errorf("JetStream not initialized")
 	}
@@ -781,7 +781,7 @@ func (nc *NATSConnection) GetValue(bucket, key string) ([]byte, error) {
 	return entry.Value(), nil
 }
 
-func (nc *NATSConnection) DeleteKey(bucket, key string) error {
+func (nc *NATSCredential) DeleteKey(bucket, key string) error {
 	if nc.JSConn == nil {
 		return fmt.Errorf("JetStream not initialized")
 	}
