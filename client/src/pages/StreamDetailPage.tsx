@@ -64,7 +64,7 @@ export function StreamDetailPage() {
   }, [subscriptions, activeTab]);
 
   // Virtualization constants
-  const SUBJECT_ITEM_HEIGHT = 80; // Approximate height of each subject item
+  const SUBJECT_ITEM_HEIGHT = 50; // Approximate height of each subject item
 
   // Virtualize subjects list - MUST be called before any early returns
   const subjectsVirtualizer = useVirtualizer({
