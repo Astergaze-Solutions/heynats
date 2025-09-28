@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { streamsApi } from '../lib/api';
 import { Button } from '../components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
@@ -38,6 +39,9 @@ export function StreamDetailPage() {
   // New state for improved UX
   const [activeTab, setActiveTab] = useState<string>('');
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+
+  // Virtualization refs
+  const subjectsContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch stream details
   const { 
@@ -274,6 +278,32 @@ export function StreamDetailPage() {
   const subjects = stream.config?.subjects || [];
   const hasActiveSubscriptions = Object.values(subscriptions).some(sub => sub.isActive);
 
+  // Virtualization constants
+  const SUBJECT_ITEM_HEIGHT = 80; // Approximate height of each subject item
+  const MESSAGE_ITEM_HEIGHT = 60; // Approximate height of each message item
+
+  // Virtualize subjects list
+  const subjectsVirtualizer = useVirtualizer({
+    count: subjects.length,
+    getScrollElement: () => subjectsContainerRef.current,
+    estimateSize: () => SUBJECT_ITEM_HEIGHT,
+  });
+
+  // Get visible messages for active tab
+  const activeMessages = useMemo(() => {
+    if (!activeTab || !subscriptions[activeTab]) return [];
+    return subscriptions[activeTab].messages.slice(-200); // Show last 200 messages
+  }, [subscriptions, activeTab]);
+
+  // Virtualize messages list
+  const messagesVirtualizer = useVirtualizer({
+    count: activeMessages.length,
+    getScrollElement: () => messagesContainerRef.current,
+    estimateSize: () => MESSAGE_ITEM_HEIGHT,
+  });
+
+
+
   return (
     <div className="p-6 max-w-full mx-auto">
       <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-8rem)]">
@@ -365,7 +395,7 @@ export function StreamDetailPage() {
         </div>
       </div>
 
-      {/* Subjects List */}
+      {/* Virtualized Subjects List */}
       <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Subjects ({subjects.length})</h2>
@@ -378,106 +408,124 @@ export function StreamDetailPage() {
             </div>
           )}
         </div>
+        
         {subjects.length === 0 ? (
           <p className="text-gray-500">No subjects configured for this stream</p>
         ) : (
-          <div className="space-y-2">
-            {subjects.map((subject) => {
-              const subscription = subscriptions[subject];
-              const isSelected = selectedSubjects.has(subject);
-              const isActive = subscription?.isActive || false;
-              const messageCount = subscription?.messages?.length || 0;
+          <div 
+            ref={subjectsContainerRef}
+            className="relative h-96 overflow-auto border rounded-lg"
+          >
+            <div style={{ height: subjectsVirtualizer.getTotalSize() }}>
+              {subjectsVirtualizer.getVirtualItems().map((virtualItem) => {
+                const subject = subjects[virtualItem.index];
+                const subscription = subscriptions[subject];
+                const isSelected = selectedSubjects.has(subject);
+                const isActive = subscription?.isActive || false;
+                const messageCount = subscription?.messages?.length || 0;
 
-              return (
-                <div
-                  key={subject}
-                  className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${
-                    isActive 
-                      ? 'bg-green-50 border-green-200' 
-                      : isSelected 
-                        ? 'bg-blue-50 border-blue-200' 
-                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => handleSubjectToggle(subject)}
-                      disabled={isActive}
-                      className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <div>
-                      <span className="font-medium text-gray-900">{subject}</span>
-                      {isActive && (
-                        <div className="flex items-center gap-3 mt-1">
-                          {/* Connection Status */}
-                          <div className="flex items-center">
-                            {subscription?.connectionStatus === 'connected' ? (
-                              <>
-                                <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-                                <span className="text-sm text-green-600">Connected</span>
-                              </>
-                            ) : subscription?.connectionStatus === 'connecting' ? (
-                              <>
-                                <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse"></div>
-                                <span className="text-sm text-yellow-600">Connecting</span>
-                              </>
-                            ) : (
-                              <>
-                                <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
-                                <span className="text-sm text-blue-600">Subscribing</span>
-                              </>
+                return (
+                  <div
+                    key={virtualItem.key}
+                    className={`absolute top-0 left-0 w-full flex items-center justify-between p-4 border-b transition-colors ${
+                      isActive 
+                        ? 'bg-green-50 border-green-200' 
+                        : isSelected 
+                          ? 'bg-blue-50 border-blue-200' 
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    }`}
+                    style={{
+                      height: virtualItem.size,
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                  >
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleSubjectToggle(subject)}
+                        disabled={isActive}
+                        className="mr-3 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <div>
+                        <span className="font-medium text-gray-900 truncate max-w-xs block">{subject}</span>
+                        {isActive && (
+                          <div className="flex items-center gap-3 mt-1">
+                            {/* Connection Status */}
+                            <div className="flex items-center">
+                              {subscription?.connectionStatus === 'connected' ? (
+                                <>
+                                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+                                  <span className="text-sm text-green-600">Connected</span>
+                                </>
+                              ) : subscription?.connectionStatus === 'connecting' ? (
+                                <>
+                                  <div className="w-2 h-2 bg-yellow-500 rounded-full mr-2 animate-pulse"></div>
+                                  <span className="text-sm text-yellow-600">Connecting</span>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
+                                  <span className="text-sm text-blue-600">Subscribing</span>
+                                </>
+                              )}
+                            </div>
+                            
+                            {/* Message Count */}
+                            {messageCount > 0 && (
+                              <div className="flex items-center">
+                                <span className="text-sm text-gray-600">
+                                  {messageCount} message{messageCount !== 1 ? 's' : ''}
+                                </span>
+                              </div>
                             )}
                           </div>
-                          
-                          {/* Message Count */}
-                          {messageCount > 0 && (
-                            <div className="flex items-center">
-                              <span className="text-sm text-gray-600">
-                                {messageCount} message{messageCount !== 1 ? 's' : ''}
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {messageCount > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => exportMessages(subject)}
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          Export
+                        </Button>
+                      )}
+                      {isActive ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => stopSubscription(subject)}
+                          className="border-red-300 text-red-600 hover:bg-red-50"
+                        >
+                          <Square className="w-4 h-4 mr-1" />
+                          Stop
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          onClick={() => startSubscription(subject)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Play className="w-4 h-4 mr-1" />
+                          Subscribe
+                        </Button>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {messageCount > 0 && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => exportMessages(subject)}
-                      >
-                        <Download className="w-4 h-4 mr-1" />
-                        Export
-                      </Button>
-                    )}
-                    {isActive ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => stopSubscription(subject)}
-                        className="border-red-300 text-red-600 hover:bg-red-50"
-                      >
-                        <Square className="w-4 h-4 mr-1" />
-                        Stop
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => startSubscription(subject)}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <Play className="w-4 h-4 mr-1" />
-                        Subscribe
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+            
+            {/* Scroll indicator */}
+            {subjects.length > 10 && (
+              <div className="absolute bottom-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                Showing {subjectsVirtualizer.getVirtualItems().length} of {subjects.length}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -570,67 +618,73 @@ export function StreamDetailPage() {
               <div className="flex-1 overflow-hidden">
                 {Object.entries(subscriptions)
                   .filter(([_, sub]) => sub.isActive && sub.messages.length > 0)
-                  .map(([subject, subscription]) => (
+                  .map(([subject]) => (
                     <TabsContent 
                       key={subject} 
                       value={subject} 
                       className="h-full mt-0 p-0 relative"
                     >
                       <div 
-                        ref={messagesContainerRef}
-                        className="h-full overflow-y-auto divide-y divide-gray-100"
+                        ref={subject === activeTab ? messagesContainerRef : null}
+                        className="h-full overflow-y-auto"
                         onScroll={handleScroll}
                       >
-                        {subscription.messages.slice(-50).map((message, index) => {
-                          const dataStr = typeof message.data === 'string' ? message.data : JSON.stringify(message.data);
-                          const isLongData = dataStr?.length > 100;
-                          const previewData = isLongData ? `${dataStr.substring(0, 100)}...` : dataStr;
-                          
-                          return (
-                            <div
-                              key={`${subject}-${index}`}
-                              onClick={() => openMessageModal(message)}
-                              className="px-4 py-2 hover:bg-blue-50 transition-all duration-200 cursor-pointer border-l-4 border-transparent hover:border-blue-400 hover:shadow-sm group"
-                            >
-                              <div className="flex items-center gap-3">
-                                <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
-                                  {new Date(message.timestamp).toLocaleTimeString()}
-                                </span>
-                                
-                                <div className="flex-1 bg-gray-900 text-gray-100 p-2 rounded text-xs font-mono overflow-hidden">
-                                  <div className="break-words whitespace-pre-wrap truncate">
-                                    {previewData}
+                        <div style={{ height: messagesVirtualizer.getTotalSize() }}>
+                          {subject === activeTab && messagesVirtualizer.getVirtualItems().map((virtualItem) => {
+                            const message = activeMessages[virtualItem.index];
+                            const dataStr = typeof message.data === 'string' ? message.data : JSON.stringify(message.data);
+                            const isLongData = dataStr?.length > 100;
+                            const previewData = isLongData ? `${dataStr.substring(0, 100)}...` : dataStr;
+                            
+                            return (
+                              <div
+                                key={virtualItem.key}
+                                onClick={() => openMessageModal(message)}
+                                className="absolute top-0 left-0 w-full px-4 py-2 hover:bg-blue-50 transition-all duration-200 cursor-pointer border-l-4 border-transparent hover:border-blue-400 hover:shadow-sm group border-b border-gray-100"
+                                style={{
+                                  height: virtualItem.size,
+                                  transform: `translateY(${virtualItem.start}px)`,
+                                }}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
+                                    {new Date(message.timestamp).toLocaleTimeString()}
+                                  </span>
+                                  
+                                  <div className="flex-1 bg-gray-900 text-gray-100 p-2 rounded text-xs font-mono overflow-hidden">
+                                    <div className="break-words whitespace-pre-wrap truncate">
+                                      {previewData}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    {message.headers && Object.keys(message.headers).length > 0 && (
+                                      <span className="text-xs text-orange-600 bg-orange-100 px-1 py-0.5 rounded">
+                                        {Object.keys(message.headers).length} headers
+                                      </span>
+                                    )}
+                                    {isLongData && (
+                                      <span className="text-xs text-blue-600 bg-blue-100 px-1 py-0.5 rounded group-hover:bg-blue-200 transition-colors">
+                                        Click to expand
+                                      </span>
+                                    )}
+                                    <svg className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                    </svg>
                                   </div>
                                 </div>
-
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  {message.headers && Object.keys(message.headers).length > 0 && (
-                                    <span className="text-xs text-orange-600 bg-orange-100 px-1 py-0.5 rounded">
-                                      {Object.keys(message.headers).length} headers
-                                    </span>
-                                  )}
-                                  {isLongData && (
-                                    <span className="text-xs text-blue-600 bg-blue-100 px-1 py-0.5 rounded group-hover:bg-blue-200 transition-colors">
-                                      Click to expand
-                                    </span>
-                                  )}
-                                  <svg className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                  </svg>
-                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                         
-                        {subscription.messages.length > 50 && (
-                          <div className="px-4 py-2 bg-blue-50 text-center">
-                            <span className="text-xs text-blue-600">
-                              Showing latest 50 of {subscription.messages.length} messages
-
-                            </span>
+                        {/* Scroll indicator for messages */}
+                        {activeMessages.length > 10 && (
+                          <div className="absolute bottom-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                            Showing {messagesVirtualizer.getVirtualItems().length} of {activeMessages.length}
                           </div>
                         )}
+                        
                         <div ref={messagesEndRef} />
                       </div>
                       {/* Jump to Latest Button - Show for active tab */}
