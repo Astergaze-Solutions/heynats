@@ -358,6 +358,6 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 ---
 
 <div align="center">
-  <p>Made with ❤️ by the <a href="https://github.com/Astergaze-Solutions">Astergaze Solutions</a> team</p>
+  <p>Made with ❤️ by the <a href="https://astergaze.com">Astergaze Solutions</a> team</p>
   <p>⭐ Star this project if you find it helpful!</p>
 </div>
