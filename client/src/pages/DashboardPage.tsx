@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { useConnectionStatus, useNATSInfo, useAccountInfo } from '../hooks/useNATS';
 import { ConnectionCard } from '../components/ConnectionCard';
 import { ConnectionStats } from '../components/StatsCard';
+import { Input } from '../components/ui/input';
 import { formatTimestamp, getStatusColor } from '../lib/utils';
 
 export function DashboardPage() {
+  const [searchQuery, setSearchQuery] = useState('');
   const { data: status } = useConnectionStatus();
   const { data: natsInfo, isLoading: infoLoading, error: infoError } = useNATSInfo(status?.connected);
   const { data: accountInfo, isLoading: accountLoading } = useAccountInfo(status?.connected);
@@ -36,6 +39,20 @@ export function DashboardPage() {
   const connections = accountInfo?.connection_limits?.connections || [];
   const totalMessages = connections.reduce((acc, conn) => acc + conn.in_msgs + conn.out_msgs, 0);
   const totalBytes = connections.reduce((acc, conn) => acc + conn.in_bytes + conn.out_bytes, 0);
+
+  // Filter connections based on search query
+  const filteredConnections = connections?.filter((connection) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery?.toLowerCase();
+    return (
+      connection.name?.toLowerCase().includes(query) ||
+      connection.ip?.toLowerCase().includes(query) ||
+      connection.lang?.toLowerCase().includes(query) ||
+      connection.cid?.toString().includes(query) ||
+      `${connection.ip}:${connection.port}`?.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <div className="p-6">
@@ -125,7 +142,7 @@ export function DashboardPage() {
                     Active Connections
                     {accountInfo && (
                       <span className="ml-2 text-sm font-normal text-gray-500">
-                        ({accountInfo.connection_limits.num_connections} of {accountInfo.connection_limits.limit})
+                        ({searchQuery ? filteredConnections.length : accountInfo.connection_limits.num_connections} of {accountInfo.connection_limits.limit})
                       </span>
                     )}
                   </h3>
@@ -134,19 +151,50 @@ export function DashboardPage() {
                   </div>
                 </div>
 
+                {/* Search Input */}
+                <div className="mb-4">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <Input
+                      type="text"
+                      placeholder="Search connections by name, IP, language, or CID..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  {searchQuery && (
+                    <p className="mt-2 text-sm text-gray-500">
+                      Found {filteredConnections.length} connection(s) matching "{searchQuery}"
+                    </p>
+                  )}
+                </div>
+
                 <div className="space-y-4">
-                  {connections.length > 0 ? (
-                    connections.map((connection) => (
+                  {filteredConnections.length > 0 ? (
+                    filteredConnections.map((connection) => (
                       <ConnectionCard key={connection.cid} connection={connection} />
                     ))
-                  ) : (
+                  ) : searchQuery ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                      <p className="mt-2">No connections match your search</p>
+                      <p className="text-xs text-gray-400">Try adjusting your search terms</p>
+                    </div>
+                  ) : connections.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 9a2 2 0 00-2 2v2m0 0V9a2 2 0 012-2m0 0V7a2 2 0 012-2h10a2 2 0 012 2v2M7 7V6a3 3 0 016 0v1" />
                       </svg>
                       <p className="mt-2">No active connections found</p>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
