@@ -105,7 +105,7 @@ func (e *StreamAPI) RegisterRoutes() {
 		})
 	})
 
-	api.POST("/streams", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.POST("", e.middleware.RequireConnection(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{

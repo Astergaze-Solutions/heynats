@@ -315,13 +315,13 @@ export function StreamDetailPage() {
 
 
   return (
-    <div className="p-3">
-      <div className="max-w-full">
-        <div className="flex flex-col lg:flex-row gap-3 h-[calc(100vh-7rem)]">
+    <div className="p-3 h-screen overflow-hidden">
+      <div className="max-w-full h-full">
+        <div className="flex flex-col lg:flex-row gap-3 h-[calc(100vh-1.5rem)]">
           {/* Left Side - Main Content */}
-          <div className="flex-1 overflow-y-auto lg:w-1/2">
+          <div className="flex-1 lg:w-1/2 flex flex-col h-full overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 flex-shrink-0">
               <div className="flex items-center">
                 <Button
                   variant="outline"
@@ -361,7 +361,7 @@ export function StreamDetailPage() {
             </div>
 
             {/* Stream Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 flex-shrink-0">
               <StatsCard
                 title="Messages"
                 value={(stream.state?.messages || 0).toLocaleString()}
@@ -385,7 +385,7 @@ export function StreamDetailPage() {
             </div>
 
             {/* Stream Configuration */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4 flex-shrink-0">
               <h2 className="text-base font-semibold mb-3">Stream Configuration</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
                 <div>
@@ -410,8 +410,8 @@ export function StreamDetailPage() {
             </div>
 
             {/* Virtualized Subjects List */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-              <div className="flex items-center justify-between mb-3">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 flex-1 flex flex-col min-h-0">
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
                 <div className="flex items-center gap-4 w-full">
                   <h2 className="text-base font-semibold">Subjects ({subjects.length})</h2>
                   {subjects.length > 0 && (
@@ -431,11 +431,11 @@ export function StreamDetailPage() {
               </div>
 
               {subjects.length === 0 ? (
-                <p className="text-gray-500">No subjects configured for this stream</p>
+                <p className="text-gray-500 flex-shrink-0">No subjects configured for this stream</p>
               ) : (
                 <div
                   ref={subjectsContainerRef}
-                  className="relative h-96 overflow-auto border border-gray-200 rounded-lg"
+                  className="relative overflow-auto border border-gray-200 rounded-lg flex-1 min-h-0"
                 >
                   <div style={{ height: subjectsVirtualizer.getTotalSize() }}>
                     {subjectsVirtualizer.getVirtualItems().map((virtualItem) => {
@@ -539,13 +539,6 @@ export function StreamDetailPage() {
                       );
                     })}
                   </div>
-
-                  {/* Scroll indicator */}
-                  {subjects.length > 10 && (
-                    <div className="absolute bottom-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
-                      Showing {subjectsVirtualizer.getVirtualItems().length} of {subjects.length}
-                    </div>
-                  )}
                 </div>
               )}
             </div>
