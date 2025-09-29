@@ -8,14 +8,11 @@ import {
 } from './ui/tooltip';
 import {
   LayoutDashboard,
-  LogOut,
-  Settings,
   ChevronLeft,
   BarChart3,
   Database,
   Send,
   Headphones,
-  User,
 } from 'lucide-react';
 
 interface NavItemProps {
