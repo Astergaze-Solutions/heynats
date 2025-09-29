@@ -383,11 +383,36 @@ export const publishApi = {
     apiRequest('/nats/publish/subjects'),
 };
 
+// Subscribe API interfaces
+export interface SubscribeRequest {
+  subject: string;
+  queue_group?: string;
+  max_messages?: number;
+  subscription_type?: 'regular' | 'queue' | 'reply' | 'request-handler';
+  auto_reply?: boolean;
+  reply_template?: string;
+}
+
+export interface ReplyMessage {
+  subject: string;
+  reply_subject: string;
+  data: string;
+  timestamp: string;
+  headers?: Record<string, string>;
+}
+
 // Subscribe API
 export const subscribeApi = {
   // Get subject suggestions for autocomplete
   getSubjects: (): Promise<{ subjects: string[] }> =>
     apiRequest('/nats/subscribe/subjects'),
+
+  // Send reply to a request message  
+  sendReply: (replySubject: string, data: string, headers?: Record<string, string>): Promise<{ success: boolean }> =>
+    apiRequest('/nats/subscribe/reply', {
+      method: 'POST',
+      body: JSON.stringify({ reply_subject: replySubject, data, headers }),
+    }),
 };
 
 // Health check API

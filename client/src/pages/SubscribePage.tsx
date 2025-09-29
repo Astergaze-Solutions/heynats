@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { subscribeApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { AutocompleteInput } from '@/components/ui/autocomplete-input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Message {
   subject: string;
@@ -11,28 +13,59 @@ interface Message {
   timestamp: string;
   headers?: Record<string, string>;
   type?: 'connected' | 'completed' | 'error';
+  reply?: string; // For request messages that need replies
 }
 
 interface Subscription {
   subject: string;
   queueGroup?: string;
   maxMessages?: number;
+  subscriptionType: 'regular' | 'queue' | 'reply' | 'request-handler';
   isActive: boolean;
   messages: Message[];
   eventSource: EventSource | null;
   connectionStatus?: 'connected' | 'disconnected' | 'connecting';
   lastStatusUpdate?: string;
+  autoReply?: boolean; // For request handlers
+  replyTemplate?: string; // Template for auto-replies
 }
 
 export function SubscribePage() {
+  // Regular subscription state
   const [subject, setSubject] = useState('');
   const [queueGroup, setQueueGroup] = useState('');
   const [maxMessages, setMaxMessages] = useState<number | ''>('');
+
+  // Reply subscription state
+  const [replySubject, setReplySubject] = useState('');
+  const [replyMaxMessages, setReplyMaxMessages] = useState<number | ''>('');
+
+  // Request handler state
+  const [requestSubject, setRequestSubject] = useState('');
+  const [requestQueueGroup, setRequestQueueGroup] = useState('');
+  const [autoReply, setAutoReply] = useState(false);
+  const [replyTemplate, setReplyTemplate] = useState('{"status": "received", "timestamp": "${timestamp}"}');
+
+  // Common state
   const [subscriptions, setSubscriptions] = useState<Record<string, Subscription>>({});
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Reply state
+  const [replyData, setReplyData] = useState('');
+  const [selectedReplySubject, setSelectedReplySubject] = useState('');
+
+  // Reply mutation
+  const replyMutation = useMutation({
+    mutationFn: ({ replySubject, data }: { replySubject: string; data: string }) => 
+      subscribeApi.sendReply(replySubject, data),
+    onSuccess: () => {
+      setReplyData('');
+      setSelectedReplySubject('');
+    },
+  });
 
   // Get subject suggestions
   const { data: subjectsData } = useQuery({
@@ -82,8 +115,22 @@ export function SubscribePage() {
     setShowJumpToLatest(shouldShowButton);
   };
 
-  const startSubscription = (subscriptionSubject: string, subscriptionQueueGroup?: string, subscriptionMaxMessages?: number) => {
-    const key = subscriptionQueueGroup ? `${subscriptionSubject}:${subscriptionQueueGroup}` : subscriptionSubject;
+  const startSubscription = (
+    subscriptionSubject: string, 
+    subscriptionType: 'regular' | 'queue' | 'reply' | 'request-handler' = 'regular',
+    subscriptionQueueGroup?: string, 
+    subscriptionMaxMessages?: number,
+    subscriptionAutoReply?: boolean,
+    subscriptionReplyTemplate?: string
+  ) => {
+    let key = subscriptionSubject;
+    if (subscriptionType === 'queue' && subscriptionQueueGroup) {
+      key = `${subscriptionSubject}:${subscriptionQueueGroup}`;
+    } else if (subscriptionType === 'reply') {
+      key = `reply:${subscriptionSubject}`;
+    } else if (subscriptionType === 'request-handler') {
+      key = subscriptionQueueGroup ? `handler:${subscriptionSubject}:${subscriptionQueueGroup}` : `handler:${subscriptionSubject}`;
+    }
     
     // Build URL with query parameters
     let url = `/api/nats/subscribe/messages/${encodeURIComponent(subscriptionSubject)}`;
@@ -108,9 +155,12 @@ export function SubscribePage() {
           subject: subscriptionSubject,
           queueGroup: subscriptionQueueGroup,
           maxMessages: subscriptionMaxMessages,
+          subscriptionType,
           isActive: true,
           messages: prev[key]?.messages || [],
           eventSource,
+          autoReply: subscriptionAutoReply,
+          replyTemplate: subscriptionReplyTemplate,
         },
       }));
     };
@@ -124,9 +174,12 @@ export function SubscribePage() {
             subject: subscriptionSubject,
             queueGroup: subscriptionQueueGroup,
             maxMessages: subscriptionMaxMessages,
+            subscriptionType,
             isActive: true,
             messages: [],
             eventSource,
+            autoReply: subscriptionAutoReply,
+            replyTemplate: subscriptionReplyTemplate,
           };
 
           // Handle connection/status messages
@@ -189,7 +242,8 @@ export function SubscribePage() {
   const handleSubscribe = () => {
     if (!subject.trim()) return;
 
-    startSubscription(subject, queueGroup || undefined, maxMessages || undefined);
+    const subscriptionType = queueGroup ? 'queue' : 'regular';
+    startSubscription(subject, subscriptionType, queueGroup || undefined, maxMessages || undefined);
     
     // Set as active tab if first subscription
     const key = queueGroup ? `${subject}:${queueGroup}` : subject;
@@ -201,6 +255,43 @@ export function SubscribePage() {
     setSubject('');
     setQueueGroup('');
     setMaxMessages('');
+  };
+
+  const handleReplySubscribe = () => {
+    if (!replySubject.trim()) return;
+
+    startSubscription(replySubject, 'reply', undefined, replyMaxMessages || undefined);
+    
+    const key = `reply:${replySubject}`;
+    if (!activeTab) {
+      setActiveTab(key);
+    }
+
+    setReplySubject('');
+    setReplyMaxMessages('');
+  };
+
+  const handleRequestHandlerSubscribe = () => {
+    if (!requestSubject.trim()) return;
+
+    startSubscription(
+      requestSubject, 
+      'request-handler', 
+      requestQueueGroup || undefined, 
+      undefined, 
+      autoReply, 
+      replyTemplate
+    );
+    
+    const key = requestQueueGroup ? `handler:${requestSubject}:${requestQueueGroup}` : `handler:${requestSubject}`;
+    if (!activeTab) {
+      setActiveTab(key);
+    }
+
+    setRequestSubject('');
+    setRequestQueueGroup('');
+    setAutoReply(false);
+    setReplyTemplate('{"status": "received", "timestamp": "${timestamp}"}');
   };
 
   // Clean up subscriptions on unmount
@@ -225,50 +316,182 @@ export function SubscribePage() {
 
       {/* Subscription Form */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
-            <AutocompleteInput
-              value={subject}
-              onChange={setSubject}
-              placeholder="e.g., events.*, user.login"
-              suggestions={subjectsData?.subjects || []}
-              className="w-full"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Queue Group</label>
-            <Input
-              value={queueGroup}
-              onChange={(e) => setQueueGroup(e.target.value)}
-              placeholder="optional"
-              className="w-full"
-            />
-          </div>
+        <Tabs defaultValue="regular" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="regular">Regular/Queue</TabsTrigger>
+            <TabsTrigger value="reply">Reply Subject</TabsTrigger>
+            <TabsTrigger value="request-handler">Request Handler</TabsTrigger>
+          </TabsList>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Max Messages</label>
-            <Input
-              type="number"
-              value={maxMessages}
-              onChange={(e) => setMaxMessages(e.target.value ? parseInt(e.target.value) : '')}
-              placeholder="unlimited"
-              min="1"
-              className="w-full"
-            />
-          </div>
+          {/* Regular/Queue Subscription Tab */}
+          <TabsContent value="regular" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Subject *</label>
+                <AutocompleteInput
+                  value={subject}
+                  onChange={setSubject}
+                  placeholder="e.g., events.*, user.login"
+                  suggestions={subjectsData?.subjects || []}
+                  className="w-full"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Queue Group</label>
+                <Input
+                  value={queueGroup}
+                  onChange={(e) => setQueueGroup(e.target.value)}
+                  placeholder="optional"
+                  className="w-full"
+                />
+              </div>
 
-          <div>
-            <Button
-              onClick={handleSubscribe}
-              disabled={!subject.trim()}
-              className="w-full"
-            >
-              Subscribe
-            </Button>
-          </div>
-        </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Max Messages</label>
+                <Input
+                  type="number"
+                  value={maxMessages}
+                  onChange={(e) => setMaxMessages(e.target.value ? parseInt(e.target.value) : '')}
+                  placeholder="unlimited"
+                  min="1"
+                  className="w-full"
+                />
+              </div>
+
+              <div>
+                <Button
+                  onClick={handleSubscribe}
+                  disabled={!subject.trim()}
+                  className="w-full"
+                >
+                  Subscribe
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Reply Subject Tab */}
+          <TabsContent value="reply" className="space-y-4">
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                <p className="text-sm text-blue-800">
+                  Subscribe to reply subjects to monitor responses in request-reply patterns. 
+                  Use wildcards like "reply.{'>'}'" or specific patterns like "_INBOX.{'>'}"
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Reply Subject Pattern *</label>
+                  <AutocompleteInput
+                    value={replySubject}
+                    onChange={setReplySubject}
+                    placeholder="e.g., _INBOX.>, reply.*"
+                    suggestions={['_INBOX.>', 'reply.>', 'response.*', '*.reply']}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Messages</label>
+                  <Input
+                    type="number"
+                    value={replyMaxMessages}
+                    onChange={(e) => setReplyMaxMessages(e.target.value ? parseInt(e.target.value) : '')}
+                    placeholder="unlimited"
+                    min="1"
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <Button
+                    onClick={handleReplySubscribe}
+                    disabled={!replySubject.trim()}
+                    className="w-full"
+                  >
+                    Subscribe to Replies
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Request Handler Tab */}
+          <TabsContent value="request-handler" className="space-y-4">
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                <p className="text-sm text-green-800">
+                  Subscribe to handle incoming requests and optionally send automatic replies.
+                  Perfect for creating service endpoints and API handlers.
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Request Subject *</label>
+                  <AutocompleteInput
+                    value={requestSubject}
+                    onChange={setRequestSubject}
+                    placeholder="e.g., api.*, service.user.*"
+                    suggestions={subjectsData?.subjects || []}
+                    className="w-full"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Queue Group</label>
+                  <Input
+                    value={requestQueueGroup}
+                    onChange={(e) => setRequestQueueGroup(e.target.value)}
+                    placeholder="load balancing group"
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="flex items-end">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={autoReply}
+                      onChange={(e) => setAutoReply(e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Auto Reply</span>
+                  </label>
+                </div>
+              </div>
+
+              {autoReply && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reply Template (JSON)
+                  </label>
+                  <Textarea
+                    value={replyTemplate}
+                    onChange={(e) => setReplyTemplate(e.target.value)}
+                    placeholder='{"status": "received", "timestamp": "${timestamp}"}'
+                    className="min-h-[80px] font-mono text-sm"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Use ${`{timestamp}`} for current time, ${`{subject}`} for request subject, ${`{data}`} for request data
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleRequestHandlerSubscribe}
+                  disabled={!requestSubject.trim()}
+                  className="flex-1"
+                >
+                  Start Request Handler
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Active Subscriptions */}
@@ -279,9 +502,12 @@ export function SubscribePage() {
             <div className="flex space-x-1 overflow-x-auto py-2">
               {activeSubscriptions.map(([key, subscription]) => {
                 const isSelected = activeTab === key;
+                const typePrefix = subscription.subscriptionType === 'reply' ? '📩' : 
+                                  subscription.subscriptionType === 'request-handler' ? '⚙️' : 
+                                  subscription.subscriptionType === 'queue' ? '👥' : '📡';
                 const displayName = subscription.queueGroup 
-                  ? `${subscription.subject} (${subscription.queueGroup})`
-                  : subscription.subject;
+                  ? `${typePrefix} ${subscription.subject} (${subscription.queueGroup})`
+                  : `${typePrefix} ${subscription.subject}`;
 
                 return (
                   <button
@@ -327,10 +553,17 @@ export function SubscribePage() {
               >
                 {activeMessages.length === 0 ? (
                   <div className="text-center text-gray-500 mt-8">
-                    <div className="text-sm">Waiting for messages on subject: <code className="bg-gray-100 px-1 py-0.5 rounded">{subscriptions[activeTab].subject}</code></div>
+                    <div className="text-sm">
+                      Waiting for {subscriptions[activeTab].subscriptionType === 'reply' ? 'reply messages' : 
+                                  subscriptions[activeTab].subscriptionType === 'request-handler' ? 'requests' : 'messages'} on subject: 
+                      <code className="bg-gray-100 px-1 py-0.5 rounded ml-1">{subscriptions[activeTab].subject}</code>
+                    </div>
                     {subscriptions[activeTab].queueGroup && (
                       <div className="text-xs mt-1">Queue group: <code className="bg-gray-100 px-1 py-0.5 rounded">{subscriptions[activeTab].queueGroup}</code></div>
                     )}
+                    <div className="text-xs mt-1 capitalize">
+                      Type: {subscriptions[activeTab].subscriptionType.replace('-', ' ')}
+                    </div>
                   </div>
                 ) : (
                   activeMessages.map((message, index) => (
@@ -339,8 +572,15 @@ export function SubscribePage() {
                       className="bg-gray-50 rounded-lg p-3 border border-gray-200"
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <div className="text-sm font-medium text-gray-900">
-                          {message.subject}
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium text-gray-900">
+                            {message.subject}
+                          </div>
+                          {message.reply && (
+                            <div className="text-xs text-blue-600 font-mono">
+                              Reply to: {message.reply}
+                            </div>
+                          )}
                         </div>
                         <div className="text-xs text-gray-500">
                           {new Date(message.timestamp).toLocaleTimeString()}
@@ -365,6 +605,43 @@ export function SubscribePage() {
                                 <span className="font-mono">{value}</span>
                               </div>
                             ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Reply Button for Request Handler */}
+                      {subscriptions[activeTab]?.subscriptionType === 'request-handler' && message.reply && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="flex gap-2 items-end">
+                            <div className="flex-1">
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Quick Reply</label>
+                              <Textarea
+                                value={selectedReplySubject === message.reply ? replyData : ''}
+                                onChange={(e) => {
+                                  setReplyData(e.target.value);
+                                  if (message.reply) setSelectedReplySubject(message.reply);
+                                }}
+                                placeholder='{"status": "success", "result": "..."}'
+                                className="min-h-[60px] text-sm"
+                                onFocus={() => {
+                                  if (message.reply) setSelectedReplySubject(message.reply);
+                                }}
+                              />
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                if (message.reply) {
+                                  replyMutation.mutate({ 
+                                    replySubject: message.reply, 
+                                    data: replyData 
+                                  });
+                                }
+                              }}
+                              disabled={!replyData.trim() || replyMutation.isPending}
+                            >
+                              {replyMutation.isPending ? 'Sending...' : 'Send Reply'}
+                            </Button>
                           </div>
                         </div>
                       )}
@@ -403,13 +680,19 @@ export function SubscribePage() {
             Start subscribing to NATS subjects to monitor real-time message flow.
           </p>
           <div className="text-sm text-gray-400">
-            <div className="mb-2">Features available:</div>
+            <div className="mb-2">Subscription types available:</div>
+            <ul className="space-y-1">
+              <li>📡 <strong>Regular</strong> - Standard NATS subscriptions</li>
+              <li>👥 <strong>Queue Group</strong> - Load balanced subscriptions</li>
+              <li>📩 <strong>Reply Subject</strong> - Monitor reply messages</li>
+              <li>⚙️ <strong>Request Handler</strong> - Handle requests with auto-reply</li>
+            </ul>
+            <div className="mt-3 mb-2">Features:</div>
             <ul className="space-y-1">
               <li>• Real-time message monitoring</li>
               <li>• Subject wildcards and pattern matching</li>
-              <li>• Queue group subscriptions</li>
-              <li>• Message limit controls</li>
               <li>• Header inspection</li>
+              <li>• Request-reply handling</li>
             </ul>
           </div>
         </div>

@@ -35,6 +35,9 @@ func (s *SubscribeAPI) RegisterRoutes() {
 
 	// REST endpoint to get subjects for autocomplete
 	api.GET("/subjects", s.middleware.RequireConnection(), s.getSubjects)
+
+	// REST endpoint to send reply messages
+	api.POST("/reply", s.middleware.RequireConnection(), s.sendReply)
 }
 
 // subscribeToSubject handles SSE subscription to a specific subject
@@ -53,6 +56,10 @@ func (s *SubscribeAPI) subscribeToSubject(c *gin.Context) {
 
 	// Parse optional query parameters
 	queueGroup := c.Query("queue_group")
+	subscriptionType := c.Query("subscription_type")
+	if subscriptionType == "" {
+		subscriptionType = "regular"
+	}
 	maxMessagesStr := c.Query("max_messages")
 	var maxMessages int
 	if maxMessagesStr != "" {
@@ -83,16 +90,31 @@ func (s *SubscribeAPI) subscribeToSubject(c *gin.Context) {
 	// Message counter
 	messageCount := 0
 
-	// Create subscription handler
-	handler := func(data []byte, headers map[string]string) {
+	// Create subscription handler for NATS messages
+	natsHandler := func(msg *nats.Msg) {
 		messageCount++
+
+		// Extract headers
+		headers := make(map[string]string)
+		if msg.Header != nil {
+			for key, values := range msg.Header {
+				if len(values) > 0 {
+					headers[key] = values[0]
+				}
+			}
+		}
 
 		// Create message event
 		message := map[string]interface{}{
-			"subject":   subject,
-			"data":      string(data),
+			"subject":   msg.Subject,
+			"data":      string(msg.Data),
 			"timestamp": pkg.GetCurrentTimestamp(),
 			"headers":   headers,
+		}
+
+		// Add reply subject if available (for request-handler subscriptions)
+		if msg.Reply != "" {
+			message["reply"] = msg.Reply
 		}
 
 		messageJSON, err := pkg.ToJSON(message)
@@ -118,21 +140,12 @@ func (s *SubscribeAPI) subscribeToSubject(c *gin.Context) {
 	var subscription *nats.Subscription
 	var err error
 
-	if queueGroup != "" {
+	if queueGroup != "" || subscriptionType == "queue" {
 		// For queue groups, use direct NATS connection
-		subscription, err = conn.Conn.QueueSubscribe(subject, queueGroup, func(msg *nats.Msg) {
-			headers := make(map[string]string)
-			if msg.Header != nil {
-				for key, values := range msg.Header {
-					if len(values) > 0 {
-						headers[key] = values[0]
-					}
-				}
-			}
-			handler(msg.Data, headers)
-		})
+		subscription, err = conn.Conn.QueueSubscribe(subject, queueGroup, natsHandler)
 	} else {
-		subscription, err = conn.SubscribeToSubject(subject, handler)
+		// For all other subscription types, use direct NATS subscription
+		subscription, err = conn.Conn.Subscribe(subject, natsHandler)
 	}
 
 	if err != nil {
@@ -154,11 +167,12 @@ func (s *SubscribeAPI) subscribeToSubject(c *gin.Context) {
 
 	// Send initial connection message
 	initialMsg := map[string]interface{}{
-		"type":         "connected",
-		"subject":      subject,
-		"queue_group":  queueGroup,
-		"max_messages": maxMessages,
-		"timestamp":    pkg.GetCurrentTimestamp(),
+		"type":              "connected",
+		"subject":           subject,
+		"queue_group":       queueGroup,
+		"subscription_type": subscriptionType,
+		"max_messages":      maxMessages,
+		"timestamp":         pkg.GetCurrentTimestamp(),
 	}
 
 	c.Writer.WriteString("data: " + string(pkg.MustToJSON(initialMsg)) + "\n\n")
@@ -215,5 +229,63 @@ func (s *SubscribeAPI) getSubjects(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"subjects": subjects,
+	})
+}
+
+// ReplyRequest represents the request body for sending a reply
+type ReplyRequest struct {
+	ReplySubject string            `json:"reply_subject" binding:"required"`
+	Data         string            `json:"data" binding:"required"`
+	Headers      map[string]string `json:"headers,omitempty"`
+}
+
+// sendReply handles sending reply messages
+func (s *SubscribeAPI) sendReply(c *gin.Context) {
+	natsConn, exists := c.Get(NatsConnectionKey)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+		return
+	}
+
+	var req ReplyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	conn := natsConn.(*pkg.NATSCredential)
+	if !conn.IsConnected() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Not connected to NATS server",
+		})
+		return
+	}
+
+	// Create message with headers if provided
+	msg := &nats.Msg{
+		Subject: req.ReplySubject,
+		Data:    []byte(req.Data),
+	}
+
+	if len(req.Headers) > 0 {
+		msg.Header = make(nats.Header)
+		for key, value := range req.Headers {
+			msg.Header.Set(key, value)
+		}
+	}
+
+	// Publish the reply message
+	err := conn.Conn.PublishMsg(msg)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to send reply",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Reply sent successfully",
 	})
 }
