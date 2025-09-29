@@ -223,7 +223,7 @@ func (p *PublishAPI) requestReply(c *gin.Context) {
 	conn := natsConn.(*pkg.NATSCredential)
 
 	// Set default timeout if not provided
-	timeout := 5 * time.Second
+	timeout := 30 * time.Second
 	if req.Timeout > 0 {
 		timeout = time.Duration(req.Timeout) * time.Second
 	}

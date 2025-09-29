@@ -27,7 +27,7 @@ export function PublishPage() {
   const [requestSubject, setRequestSubject] = useState('');
   const [requestData, setRequestData] = useState('');
   const [requestHeaders, setRequestHeaders] = useState<Header[]>([{ key: '', value: '' }]);
-  const [timeout, setTimeout] = useState(5);
+  const [timeout, setTimeout] = useState(30); // Default 30 seconds
   const [replySubject, setReplySubject] = useState('');
 
   // Get subject suggestions
