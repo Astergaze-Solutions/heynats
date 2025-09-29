@@ -313,7 +313,15 @@ cd client && pnpm lint  # Frontend only
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our contributing guidelines:
+We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) for detailed information on:
+
+- 🐛 Reporting bugs
+- 💡 Suggesting features  
+- 💻 Code contributions
+- 📝 Documentation improvements
+- 🔧 Development setup
+
+**Quick start for contributors:**
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
@@ -341,6 +349,26 @@ make dev-full
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## 👩‍💻 Contributors
+
+We're grateful to all the amazing people who have contributed to HeyNATS! 🎉
+
+<!-- Contributors list will be automatically updated -->
+<a href="https://github.com/Astergaze-Solutions/heynats/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Astergaze-Solutions/heynats" alt="Contributors" />
+</a>
+
+### How to Contribute
+
+Want to see your profile here? We'd love your contributions! Check out our [Contributing Guidelines](CONTRIBUTING.md) to get started.
+
+### Core Maintainers
+
+- **[@mukezhz](https://github.com/mukezhz)** - Project Lead & Core Developer
+- **[@Astergaze-Solutions](https://github.com/Astergaze-Solutions)** - Organization & Project Sponsor
+
+*Interested in becoming a maintainer? Contribute regularly and reach out to us!*
 
 ## 🙏 Acknowledgments
 
