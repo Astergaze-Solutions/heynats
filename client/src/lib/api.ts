@@ -305,6 +305,84 @@ export const kvApi = {
     }),
 };
 
+// Publish API interfaces
+export interface PublishRequest {
+  subject: string;
+  data: string;
+  headers?: Record<string, string>;
+}
+
+export interface PublishMessage {
+  subject: string;
+  data: string;
+  headers?: Record<string, string>;
+}
+
+export interface BatchPublishRequest {
+  messages: PublishMessage[];
+}
+
+export interface PublishResponse {
+  success: boolean;
+  subject: string;
+  message_id?: string;
+  error?: string;
+}
+
+export interface BatchPublishResponse {
+  success: boolean;
+  results: PublishResponse[];
+  total: number;
+  succeeded: number;
+  failed: number;
+}
+
+export interface RequestReplyRequest {
+  subject: string;
+  data: string;
+  headers?: Record<string, string>;
+  timeout?: number; // in seconds
+  reply_subject?: string;
+}
+
+export interface RequestReplyResponse {
+  success: boolean;
+  subject: string;
+  reply_subject: string;
+  request_data: string;
+  reply_data?: string;
+  error?: string;
+  timeout?: boolean;
+}
+
+// Publish API
+export const publishApi = {
+  // Publish a single message
+  publishMessage: (request: PublishRequest): Promise<PublishResponse> =>
+    apiRequest('/nats/publish/message', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    }),
+
+  // Publish multiple messages in batch
+  publishBatch: (request: BatchPublishRequest): Promise<BatchPublishResponse> =>
+    apiRequest('/nats/publish/batch', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    }),
+
+  // Send request and wait for reply
+  requestReply: (request: RequestReplyRequest): Promise<RequestReplyResponse> =>
+    apiRequest('/nats/publish/request', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    }),
+
+  // Get subject suggestions
+  getSubjects: (): Promise<{ subjects: string[] }> =>
+    apiRequest('/nats/publish/subjects'),
+};
+
 // Health check API
 export const healthApi = {
   getHealth: (): Promise<{ status: string; server: string }> =>
