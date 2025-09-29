@@ -57,6 +57,9 @@ export function SubscribePage() {
   const [replyData, setReplyData] = useState('');
   const [selectedReplySubject, setSelectedReplySubject] = useState('');
 
+  // Confirmation state
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState<string | null>(null);
+
   // Reply mutation
   const replyMutation = useMutation({
     mutationFn: ({ replySubject, data }: { replySubject: string; data: string }) => 
@@ -237,6 +240,19 @@ export function SubscribePage() {
       const remainingKeys = Object.keys(subscriptions).filter(k => k !== key && subscriptions[k].isActive);
       setActiveTab(remainingKeys[0] || null);
     }
+  };
+
+  const handleDisconnectClick = (key: string) => {
+    setShowDisconnectConfirm(key);
+  };
+
+  const confirmDisconnect = (key: string) => {
+    stopSubscription(key);
+    setShowDisconnectConfirm(null);
+  };
+
+  const handleDisconnectAll = () => {
+    activeSubscriptions.forEach(([key]) => stopSubscription(key));
   };
 
   const handleSubscribe = () => {
@@ -529,11 +545,14 @@ export function SubscribePage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        stopSubscription(key);
+                        handleDisconnectClick(key);
                       }}
-                      className="ml-1 text-gray-400 hover:text-red-500"
+                      className="ml-1 w-5 h-5 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-100 rounded-full transition-colors"
+                      title="Disconnect subscription"
                     >
-                      ×
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </button>
                   </button>
                 );
@@ -544,6 +563,53 @@ export function SubscribePage() {
           {/* Messages Area */}
           {activeTab && (
             <div className="flex-1 flex flex-col min-h-0">
+              {/* Subscription Controls Header */}
+              <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-3 h-3 rounded-full ${subscriptions[activeTab].isActive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                      <span className="text-sm font-medium text-gray-900">
+                        {subscriptions[activeTab].subscriptionType === 'reply' ? 'Reply Subscription' : 
+                         subscriptions[activeTab].subscriptionType === 'request-handler' ? 'Request Handler' : 
+                         subscriptions[activeTab].subscriptionType === 'queue' ? 'Queue Subscription' : 'Regular Subscription'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Subject: <code className="bg-gray-200 px-1 py-0.5 rounded">{subscriptions[activeTab].subject}</code>
+                      {subscriptions[activeTab].queueGroup && (
+                        <span className="ml-2">
+                          Queue: <code className="bg-gray-200 px-1 py-0.5 rounded">{subscriptions[activeTab].queueGroup}</code>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="text-xs text-gray-500">
+                      {subscriptions[activeTab].messages.length} messages
+                    </div>
+                    {activeSubscriptions.length > 1 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleDisconnectAll}
+                        className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                      >
+                        Disconnect All
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDisconnectClick(activeTab)}
+                      className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                    >
+                      Disconnect
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
               {/* Messages */}
               <div 
                 ref={messagesContainerRef}
@@ -694,6 +760,50 @@ export function SubscribePage() {
               <li>• Header inspection</li>
               <li>• Request-reply handling</li>
             </ul>
+          </div>
+        </div>
+      )}
+
+      {/* Disconnect Confirmation Modal */}
+      {showDisconnectConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Confirm Disconnection
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to disconnect from subscription:
+            </p>
+            <div className="bg-gray-50 p-3 rounded mb-4">
+              <div className="text-sm font-medium text-gray-900">
+                {subscriptions[showDisconnectConfirm]?.subject}
+              </div>
+              {subscriptions[showDisconnectConfirm]?.queueGroup && (
+                <div className="text-xs text-gray-500">
+                  Queue: {subscriptions[showDisconnectConfirm].queueGroup}
+                </div>
+              )}
+              <div className="text-xs text-gray-500 capitalize">
+                Type: {subscriptions[showDisconnectConfirm]?.subscriptionType.replace('-', ' ')}
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mb-6">
+              This will stop receiving messages and close the connection. You can always subscribe again later.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowDisconnectConfirm(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => confirmDisconnect(showDisconnectConfirm)}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Disconnect
+              </Button>
+            </div>
           </div>
         </div>
       )}
