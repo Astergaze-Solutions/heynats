@@ -27,7 +27,7 @@ export function DashboardLayout() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="bg-white border rounded-md flex-shrink-0 p-4 py-3 m-3 mb-0">
+        <header className="bg-white border-b flex-shrink-0 p-4 py-3 mb-0">
             <div className="flex justify-between items-center">
               <div className="">
                 <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
