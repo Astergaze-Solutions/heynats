@@ -4,19 +4,18 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/astergaze-solutions/heynats/internal/infrastructure"
 	"github.com/astergaze-solutions/heynats/internal/pkg"
 	"github.com/gin-gonic/gin"
 )
 
 type StreamAPI struct {
-	router     *infrastructure.Router
+	router     *gin.RouterGroup
 	conns      *NatsConnectionStore
 	middleware *ConnectionMiddleware
 }
 
 func NewStreamAPI(
-	router *infrastructure.Router,
+	router *gin.RouterGroup,
 	conns *NatsConnectionStore,
 	middleware *ConnectionMiddleware,
 ) *StreamAPI {
@@ -28,8 +27,8 @@ func NewStreamAPI(
 }
 
 func (e *StreamAPI) RegisterRoutes() {
-	api := e.router
-	api.GET("/api/nats/streams", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api := e.router.Group("/streams")
+	api.GET("", e.middleware.RequireConnection(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -55,7 +54,7 @@ func (e *StreamAPI) RegisterRoutes() {
 		})
 	})
 
-	api.GET("/api/nats/streams/:stream", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.GET("/:stream", e.middleware.RequireConnection(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -79,7 +78,7 @@ func (e *StreamAPI) RegisterRoutes() {
 		c.JSON(http.StatusOK, streamInfo)
 	})
 
-	api.GET("/api/nats/consumers/:stream", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.GET("/consumers/:stream", e.middleware.RequireConnection(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -106,7 +105,7 @@ func (e *StreamAPI) RegisterRoutes() {
 		})
 	})
 
-	api.POST("/api/nats/streams", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.POST("/streams", e.middleware.RequireConnection(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -172,7 +171,7 @@ func (e *StreamAPI) RegisterRoutes() {
 	})
 
 	// SSE endpoint for subscribing to stream subjects
-	api.GET("/api/nats/streams/:stream/subjects/:subject/subscribe", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.GET("/:stream/subjects/:subject/subscribe", e.middleware.RequireConnection(), func(c *gin.Context) {
 		streamName := c.Param("stream")
 		subject := c.Param("subject")
 
@@ -273,7 +272,7 @@ func (e *StreamAPI) RegisterRoutes() {
 		}
 	})
 
-	api.DELETE("/api/nats/streams/:stream", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.DELETE("/:stream", e.middleware.RequireConnection(), func(c *gin.Context) {
 		streamName := c.Param("stream")
 
 		natsConn, exists := c.Get(NatsConnectionKey)

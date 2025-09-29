@@ -6,20 +6,19 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/astergaze-solutions/heynats/internal/infrastructure"
 	"github.com/astergaze-solutions/heynats/internal/pkg"
 	"github.com/gin-gonic/gin"
 	"github.com/nats-io/nats.go"
 )
 
 type KVAPI struct {
-	router     *infrastructure.Router
+	router     *gin.RouterGroup
 	conns      *NatsConnectionStore
 	middleware *ConnectionMiddleware
 }
 
 func NewKVAPI(
-	router *infrastructure.Router,
+	router *gin.RouterGroup,
 	conns *NatsConnectionStore,
 	middleware *ConnectionMiddleware,
 ) *KVAPI {
@@ -31,9 +30,9 @@ func NewKVAPI(
 }
 
 func (e *KVAPI) RegisterRoutes() {
-	api := e.router
+	api := e.router.Group("/kv")
 	// list buckets
-	api.GET("/api/nats/kv/buckets", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.GET("/buckets", e.middleware.RequireConnection(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
@@ -55,7 +54,7 @@ func (e *KVAPI) RegisterRoutes() {
 		})
 	})
 
-	api.GET("/api/nats/kv/buckets/:bucket", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.GET("/buckets/:bucket", e.middleware.RequireConnection(), func(c *gin.Context) {
 		bucketName := c.Param("bucket")
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
@@ -77,7 +76,7 @@ func (e *KVAPI) RegisterRoutes() {
 	})
 
 	// create bucket
-	api.POST("/api/nats/kv/buckets", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.POST("/buckets", e.middleware.RequireConnection(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -138,7 +137,7 @@ func (e *KVAPI) RegisterRoutes() {
 	})
 
 	// delete buckets
-	api.DELETE("/api/nats/kv/buckets/:bucket", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.DELETE("/buckets/:bucket", e.middleware.RequireConnection(), func(c *gin.Context) {
 		bucket := c.Param("bucket")
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
@@ -156,7 +155,7 @@ func (e *KVAPI) RegisterRoutes() {
 	})
 
 	// put key value
-	api.POST("/api/nats/kv/buckets/:bucket/keys", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.POST("/buckets/:bucket/keys", e.middleware.RequireConnection(), func(c *gin.Context) {
 		bucket := c.Param("bucket")
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
@@ -191,7 +190,7 @@ func (e *KVAPI) RegisterRoutes() {
 	})
 
 	// get bucket key valuse
-	api.GET("/api/nats/kv/buckets/:bucket/keys", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.GET("/buckets/:bucket/keys", e.middleware.RequireConnection(), func(c *gin.Context) {
 		bucket := c.Param("bucket")
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
@@ -229,7 +228,7 @@ func (e *KVAPI) RegisterRoutes() {
 	})
 
 	// get key value
-	api.GET("/api/nats/kv/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.GET("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), func(c *gin.Context) {
 		bucket := c.Param("bucket")
 		key := c.Param("key")
 		natsConn, exists := c.Get(NatsConnectionKey)
@@ -248,7 +247,7 @@ func (e *KVAPI) RegisterRoutes() {
 	})
 
 	// delete key
-	api.DELETE("/api/nats/kv/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.DELETE("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), func(c *gin.Context) {
 		bucket := c.Param("bucket")
 		key := c.Param("key")
 		natsConn, exists := c.Get(NatsConnectionKey)

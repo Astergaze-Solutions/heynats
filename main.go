@@ -15,17 +15,20 @@ func main() {
 	natsConnections := api.NewNatsConnection()
 	middleware := api.NewConnectionMiddleware(natsConnections)
 
-	// Register APIs
-	exampleAPI := api.NewExample(router)
-	exampleAPI.RegisterRoutes()
+	apiGroup := router.Group("/api")
 
-	natsAPI := api.NewHeyNats(router, natsConnections, middleware)
+	// Register APIs
+	healthAPI := api.NewHealth(apiGroup)
+	healthAPI.RegisterRoutes()
+
+	natsAPIGroup := apiGroup.Group("/nats")
+	natsAPI := api.NewHeyNats(natsAPIGroup, natsConnections, middleware)
 	natsAPI.RegisterRoutes()
 
-	kvAPI := api.NewKVAPI(router, natsConnections, middleware)
+	kvAPI := api.NewKVAPI(natsAPIGroup, natsConnections, middleware)
 	kvAPI.RegisterRoutes()
 
-	streamAPI := api.NewStreamAPI(router, natsConnections, middleware)
+	streamAPI := api.NewStreamAPI(natsAPIGroup, natsConnections, middleware)
 	streamAPI.RegisterRoutes()
 
 	// Setup graceful shutdown

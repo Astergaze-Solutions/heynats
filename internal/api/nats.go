@@ -5,20 +5,19 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/astergaze-solutions/heynats/internal/infrastructure"
 	"github.com/astergaze-solutions/heynats/internal/pkg"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type HeyNats struct {
-	router     *infrastructure.Router
+	router     *gin.RouterGroup
 	conns      *NatsConnectionStore
 	middleware *ConnectionMiddleware
 }
 
 func NewHeyNats(
-	r *infrastructure.Router,
+	r *gin.RouterGroup,
 	conns *NatsConnectionStore,
 	middleware *ConnectionMiddleware,
 ) *HeyNats {
@@ -32,7 +31,7 @@ func NewHeyNats(
 func (e *HeyNats) RegisterRoutes() {
 	// NATS connection endpoints
 	api := e.router
-	api.POST("/api/nats/connect", e.middleware.Handle(), func(c *gin.Context) {
+	api.POST("/connect", e.middleware.Handle(), func(c *gin.Context) {
 		var req pkg.ConnectionRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -105,7 +104,7 @@ func (e *HeyNats) RegisterRoutes() {
 		})
 	})
 
-	api.GET("/api/nats/info", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.GET("/info", e.middleware.RequireConnection(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -128,7 +127,7 @@ func (e *HeyNats) RegisterRoutes() {
 		c.JSON(http.StatusOK, info)
 	})
 
-	api.GET("/api/nats/connection/stats", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.GET("/connection/stats", e.middleware.RequireConnection(), func(c *gin.Context) {
 		connectionID, exists := c.Get(ConnectionIDKey)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -169,7 +168,7 @@ func (e *HeyNats) RegisterRoutes() {
 		c.JSON(http.StatusOK, stats)
 	})
 
-	api.GET("/api/nats/account/info", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.GET("/account/info", e.middleware.RequireConnection(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -192,7 +191,7 @@ func (e *HeyNats) RegisterRoutes() {
 		c.JSON(http.StatusOK, accountInfo)
 	})
 
-	api.GET("/api/nats/account", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.GET("/account", e.middleware.RequireConnection(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
 			c.JSON(http.StatusUnauthorized, gin.H{
@@ -215,7 +214,7 @@ func (e *HeyNats) RegisterRoutes() {
 		c.JSON(http.StatusOK, accountInfo)
 	})
 
-	api.POST("/api/nats/disconnect", e.middleware.RequireConnection(), func(c *gin.Context) {
+	api.POST("/disconnect", e.middleware.RequireConnection(), func(c *gin.Context) {
 		connectionID, exists := c.Get(ConnectionIDKey)
 		if exists {
 			if cID, ok := connectionID.(string); ok {
@@ -231,7 +230,7 @@ func (e *HeyNats) RegisterRoutes() {
 		})
 	})
 
-	api.GET("/api/nats/status", e.middleware.Handle(), func(c *gin.Context) {
+	api.GET("/status", e.middleware.Handle(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		connected := false
 		status := gin.H{
@@ -253,7 +252,7 @@ func (e *HeyNats) RegisterRoutes() {
 		c.JSON(http.StatusOK, status)
 	})
 
-	api.GET("/api/nats/health", e.middleware.Handle(), func(c *gin.Context) {
+	api.GET("/health", e.middleware.Handle(), func(c *gin.Context) {
 		natsConn, exists := c.Get(NatsConnectionKey)
 		if !exists {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
