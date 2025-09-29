@@ -34,6 +34,9 @@ func main() {
 	publishAPI := api.NewPublishAPI(natsAPIGroup, natsConnections, middleware)
 	publishAPI.RegisterRoutes()
 
+	subscribeAPI := api.NewSubscribeAPI(natsAPIGroup, natsConnections, middleware)
+	subscribeAPI.RegisterRoutes()
+
 	// Setup graceful shutdown
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)

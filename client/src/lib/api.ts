@@ -383,6 +383,13 @@ export const publishApi = {
     apiRequest('/nats/publish/subjects'),
 };
 
+// Subscribe API
+export const subscribeApi = {
+  // Get subject suggestions for autocomplete
+  getSubjects: (): Promise<{ subjects: string[] }> =>
+    apiRequest('/nats/subscribe/subjects'),
+};
+
 // Health check API
 export const healthApi = {
   getHealth: (): Promise<{ status: string; server: string }> =>
