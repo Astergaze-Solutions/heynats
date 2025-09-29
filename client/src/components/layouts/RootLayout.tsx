@@ -6,7 +6,7 @@ import { Toaster } from 'sonner';
 export function RootLayout() {
   return (
     <QueryProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 overflow-hidden">
         <Outlet />
         <DevTools />
         <Toaster 

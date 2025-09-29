@@ -20,14 +20,14 @@ export function DashboardLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Sidebar */}
       <Sidebar />
       
       {/* Main Content */}
-      <div className="flex-1 flex flex-col mx-5 py-3">
+      <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 flex-shrink-0 p-4 py-3 mx-3">
+        <header className="bg-white border rounded-md flex-shrink-0 p-4 py-3 m-3 mb-0">
             <div className="flex justify-between items-center">
               <div className="">
                 <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
@@ -56,7 +56,7 @@ export function DashboardLayout() {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-y-auto p-3 pt-3">
           <Outlet />
         </main>
       </div>
