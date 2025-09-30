@@ -355,9 +355,11 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 We're grateful to all the amazing people who have contributed to HeyNATS! 🎉
 
 <!-- Contributors list will be automatically updated -->
-<a href="https://github.com/Astergaze-Solutions/heynats/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Astergaze-Solutions/heynats" alt="Contributors" />
+<a href="https://github.com/astergaze-solutions/heynats/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=astergaze-solutions/heynats" alt="Contributors" />
 </a>
+
+Made with [contrib.rocks](https://contrib.rocks).
 
 ### How to Contribute
 
