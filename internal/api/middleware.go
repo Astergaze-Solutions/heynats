@@ -1,12 +1,15 @@
 package api
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/astergaze-solutions/heynats/internal/pkg"
+	"github.com/gin-gonic/gin"
+)
 
 type ConnectionMiddleware struct {
-	conns *NatsConnectionStore
+	conns *pkg.NatsConnectionStore
 }
 
-func NewConnectionMiddleware(conns *NatsConnectionStore) *ConnectionMiddleware {
+func NewConnectionMiddleware(conns *pkg.NatsConnectionStore) *ConnectionMiddleware {
 	return &ConnectionMiddleware{conns: conns}
 }
 

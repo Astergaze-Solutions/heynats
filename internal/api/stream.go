@@ -10,13 +10,13 @@ import (
 
 type StreamAPI struct {
 	router     *gin.RouterGroup
-	conns      *NatsConnectionStore
+	conns      *pkg.NatsConnectionStore
 	middleware *ConnectionMiddleware
 }
 
 func NewStreamAPI(
 	router *gin.RouterGroup,
-	conns *NatsConnectionStore,
+	conns *pkg.NatsConnectionStore,
 	middleware *ConnectionMiddleware,
 ) *StreamAPI {
 	return &StreamAPI{

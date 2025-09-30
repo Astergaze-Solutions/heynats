@@ -12,13 +12,13 @@ import (
 
 type HeyNats struct {
 	router     *gin.RouterGroup
-	conns      *NatsConnectionStore
+	conns      *pkg.NatsConnectionStore
 	middleware *ConnectionMiddleware
 }
 
 func NewHeyNats(
 	r *gin.RouterGroup,
-	conns *NatsConnectionStore,
+	conns *pkg.NatsConnectionStore,
 	middleware *ConnectionMiddleware,
 ) *HeyNats {
 	return &HeyNats{
@@ -145,9 +145,9 @@ func (e *HeyNats) RegisterRoutes() {
 		}
 
 		// Get connection info
-		e.conns.mutex.RLock()
-		connInfo, exists := e.conns.nastsConns[cID]
-		e.conns.mutex.RUnlock()
+		e.conns.Mutex.RLock()
+		connInfo, exists := e.conns.NastsConns[cID]
+		e.conns.Mutex.RUnlock()
 
 		if !exists {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -159,8 +159,8 @@ func (e *HeyNats) RegisterRoutes() {
 		stats := gin.H{
 			"connection_id":  cID,
 			"last_activity":  connInfo.LastActivity,
-			"idle_timeout":   e.conns.idleTimeout,
-			"time_remaining": e.conns.idleTimeout - time.Since(connInfo.LastActivity),
+			"idle_timeout":   e.conns.IdleTimeout,
+			"time_remaining": e.conns.IdleTimeout - time.Since(connInfo.LastActivity),
 			"is_healthy":     connInfo.Connection.IsHealthy(),
 			"is_connected":   connInfo.Connection.Conn != nil && connInfo.Connection.Conn.IsConnected(),
 		}

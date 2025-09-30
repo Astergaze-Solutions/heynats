@@ -12,7 +12,7 @@ import (
 
 type PublishAPI struct {
 	router     *gin.RouterGroup
-	conns      *NatsConnectionStore
+	conns      *pkg.NatsConnectionStore
 	middleware *ConnectionMiddleware
 }
 
@@ -67,7 +67,7 @@ type RequestReplyResponse struct {
 
 func NewPublishAPI(
 	router *gin.RouterGroup,
-	conns *NatsConnectionStore,
+	conns *pkg.NatsConnectionStore,
 	middleware *ConnectionMiddleware,
 ) *PublishAPI {
 	return &PublishAPI{

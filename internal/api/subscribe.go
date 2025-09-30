@@ -11,13 +11,13 @@ import (
 
 type SubscribeAPI struct {
 	router     *gin.RouterGroup
-	conns      *NatsConnectionStore
+	conns      *pkg.NatsConnectionStore
 	middleware *ConnectionMiddleware
 }
 
 func NewSubscribeAPI(
 	router *gin.RouterGroup,
-	conns *NatsConnectionStore,
+	conns *pkg.NatsConnectionStore,
 	middleware *ConnectionMiddleware,
 ) *SubscribeAPI {
 	return &SubscribeAPI{

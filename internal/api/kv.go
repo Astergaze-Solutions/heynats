@@ -13,13 +13,13 @@ import (
 
 type KVAPI struct {
 	router     *gin.RouterGroup
-	conns      *NatsConnectionStore
+	conns      *pkg.NatsConnectionStore
 	middleware *ConnectionMiddleware
 }
 
 func NewKVAPI(
 	router *gin.RouterGroup,
-	conns *NatsConnectionStore,
+	conns *pkg.NatsConnectionStore,
 	middleware *ConnectionMiddleware,
 ) *KVAPI {
 	return &KVAPI{

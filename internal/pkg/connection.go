@@ -1,18 +1,16 @@
-package api
+package pkg
 
 import (
 	"context"
 	"log"
 	"sync"
 	"time"
-
-	"github.com/astergaze-solutions/heynats/internal/pkg"
 )
 
 type ConnectionInfo struct {
-	Connection   *pkg.NATSCredential
+	Connection   *NATSCredential
 	LastActivity time.Time
-	Config       *pkg.ConnectionRequest // Store original connection config for reconnection
+	Config       *ConnectionRequest // Store original connection config for reconnection
 }
 
 type ConnectionStoreConfig struct {
@@ -21,12 +19,12 @@ type ConnectionStoreConfig struct {
 }
 
 type NatsConnectionStore struct {
-	nastsConns    map[string]*ConnectionInfo
-	mutex         sync.RWMutex
-	idleTimeout   time.Duration
-	checkInterval time.Duration
-	ctx           context.Context
-	cancel        context.CancelFunc
+	NastsConns    map[string]*ConnectionInfo
+	Mutex         sync.RWMutex
+	IdleTimeout   time.Duration
+	CheckInterval time.Duration
+	Ctx           context.Context
+	Cancel        context.CancelFunc
 }
 
 func NewNatsConnection() *NatsConnectionStore {
@@ -39,11 +37,11 @@ func NewNatsConnection() *NatsConnectionStore {
 func NewNatsConnectionWithConfig(config ConnectionStoreConfig) *NatsConnectionStore {
 	ctx, cancel := context.WithCancel(context.Background())
 	store := &NatsConnectionStore{
-		nastsConns:    make(map[string]*ConnectionInfo),
-		idleTimeout:   config.IdleTimeout,
-		checkInterval: config.CheckInterval,
-		ctx:           ctx,
-		cancel:        cancel,
+		NastsConns:    make(map[string]*ConnectionInfo),
+		IdleTimeout:   config.IdleTimeout,
+		CheckInterval: config.CheckInterval,
+		Ctx:           ctx,
+		Cancel:        cancel,
 	}
 
 	// Start the idle connection cleanup goroutine
@@ -56,11 +54,11 @@ func NewNatsConnectionWithConfig(config ConnectionStoreConfig) *NatsConnectionSt
 }
 
 // AddConnection adds a new connection with activity tracking
-func (n *NatsConnectionStore) AddConnection(id string, conn *pkg.NATSCredential, config *pkg.ConnectionRequest) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+func (n *NatsConnectionStore) AddConnection(id string, conn *NATSCredential, config *ConnectionRequest) {
+	n.Mutex.Lock()
+	defer n.Mutex.Unlock()
 
-	n.nastsConns[id] = &ConnectionInfo{
+	n.NastsConns[id] = &ConnectionInfo{
 		Connection:   conn,
 		LastActivity: time.Now(),
 		Config:       config,
@@ -68,11 +66,11 @@ func (n *NatsConnectionStore) AddConnection(id string, conn *pkg.NATSCredential,
 }
 
 // GetConnection retrieves a connection and updates its activity timestamp
-func (n *NatsConnectionStore) GetConnection(id string) (*pkg.NATSCredential, bool) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+func (n *NatsConnectionStore) GetConnection(id string) (*NATSCredential, bool) {
+	n.Mutex.Lock()
+	defer n.Mutex.Unlock()
 
-	connInfo, exists := n.nastsConns[id]
+	connInfo, exists := n.NastsConns[id]
 	if !exists {
 		return nil, false
 	}
@@ -84,11 +82,11 @@ func (n *NatsConnectionStore) GetConnection(id string) (*pkg.NATSCredential, boo
 }
 
 // GetOrReconnect retrieves a connection, reconnecting if necessary
-func (n *NatsConnectionStore) GetOrReconnect(id string) (*pkg.NATSCredential, bool, error) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+func (n *NatsConnectionStore) GetOrReconnect(id string) (*NATSCredential, bool, error) {
+	n.Mutex.Lock()
+	defer n.Mutex.Unlock()
 
-	connInfo, exists := n.nastsConns[id]
+	connInfo, exists := n.NastsConns[id]
 	if !exists {
 		return nil, false, nil
 	}
@@ -103,7 +101,7 @@ func (n *NatsConnectionStore) GetOrReconnect(id string) (*pkg.NATSCredential, bo
 	// Connection is dead, attempt to reconnect
 	log.Printf("Reconnecting to NATS server for connection %s", id)
 
-	newConn := &pkg.NATSCredential{
+	newConn := &NATSCredential{
 		Host:     connInfo.Config.Host,
 		Port:     connInfo.Config.Port,
 		Username: connInfo.Config.Username,
@@ -112,14 +110,14 @@ func (n *NatsConnectionStore) GetOrReconnect(id string) (*pkg.NATSCredential, bo
 
 	if err := newConn.Connect(); err != nil {
 		// Remove failed connection
-		delete(n.nastsConns, id)
+		delete(n.NastsConns, id)
 		return nil, false, err
 	}
 
 	// Test the reconnection
 	if err := newConn.TestConnection(); err != nil {
 		newConn.Disconnect()
-		delete(n.nastsConns, id)
+		delete(n.NastsConns, id)
 		return nil, false, err
 	}
 
@@ -133,48 +131,48 @@ func (n *NatsConnectionStore) GetOrReconnect(id string) (*pkg.NATSCredential, bo
 
 // RemoveConnection removes and disconnects a specific connection
 func (n *NatsConnectionStore) RemoveConnection(id string) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	n.Mutex.Lock()
+	defer n.Mutex.Unlock()
 
-	if connInfo, exists := n.nastsConns[id]; exists {
+	if connInfo, exists := n.NastsConns[id]; exists {
 		if connInfo.Connection != nil {
 			connInfo.Connection.Disconnect()
 		}
-		delete(n.nastsConns, id)
+		delete(n.NastsConns, id)
 	}
 }
 
 // ClearAllConnections removes and disconnects all connections
 func (n *NatsConnectionStore) ClearAllConnections() {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	n.Mutex.Lock()
+	defer n.Mutex.Unlock()
 
-	for id, connInfo := range n.nastsConns {
+	for id, connInfo := range n.NastsConns {
 		if connInfo.Connection != nil {
 			connInfo.Connection.Disconnect()
 		}
-		delete(n.nastsConns, id)
+		delete(n.NastsConns, id)
 	}
 }
 
 // UpdateActivity updates the last activity timestamp for a connection
 func (n *NatsConnectionStore) UpdateActivity(id string) {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	n.Mutex.Lock()
+	defer n.Mutex.Unlock()
 
-	if connInfo, exists := n.nastsConns[id]; exists {
+	if connInfo, exists := n.NastsConns[id]; exists {
 		connInfo.LastActivity = time.Now()
 	}
 }
 
 // startIdleConnectionCleanup starts a goroutine that periodically checks for and closes idle connections
 func (n *NatsConnectionStore) startIdleConnectionCleanup() {
-	ticker := time.NewTicker(n.checkInterval)
+	ticker := time.NewTicker(n.CheckInterval)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-n.ctx.Done():
+		case <-n.Ctx.Done():
 			return
 		case <-ticker.C:
 			n.cleanupIdleConnections()
@@ -184,14 +182,14 @@ func (n *NatsConnectionStore) startIdleConnectionCleanup() {
 
 // cleanupIdleConnections closes connections that have been idle for too long
 func (n *NatsConnectionStore) cleanupIdleConnections() {
-	n.mutex.Lock()
-	defer n.mutex.Unlock()
+	n.Mutex.Lock()
+	defer n.Mutex.Unlock()
 
 	now := time.Now()
 	toRemove := make([]string, 0)
 
-	for id, connInfo := range n.nastsConns {
-		if now.Sub(connInfo.LastActivity) > n.idleTimeout {
+	for id, connInfo := range n.NastsConns {
+		if now.Sub(connInfo.LastActivity) > n.IdleTimeout {
 			log.Printf("Closing idle connection %s (idle for %v)", id, now.Sub(connInfo.LastActivity))
 			if connInfo.Connection != nil {
 				connInfo.Connection.Disconnect()
@@ -201,7 +199,7 @@ func (n *NatsConnectionStore) cleanupIdleConnections() {
 	}
 
 	for _, id := range toRemove {
-		delete(n.nastsConns, id)
+		delete(n.NastsConns, id)
 	}
 
 	if len(toRemove) > 0 {
@@ -211,6 +209,6 @@ func (n *NatsConnectionStore) cleanupIdleConnections() {
 
 // Shutdown gracefully shuts down the connection store
 func (n *NatsConnectionStore) Shutdown() {
-	n.cancel()
+	n.Cancel()
 	n.ClearAllConnections()
 }

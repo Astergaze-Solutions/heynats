@@ -8,11 +8,12 @@ import (
 
 	"github.com/astergaze-solutions/heynats/internal/api"
 	"github.com/astergaze-solutions/heynats/internal/infrastructure"
+	"github.com/astergaze-solutions/heynats/internal/pkg"
 )
 
 func main() {
 	router := infrastructure.NewRouter()
-	natsConnections := api.NewNatsConnection()
+	natsConnections := pkg.NewNatsConnection()
 	middleware := api.NewConnectionMiddleware(natsConnections)
 
 	apiGroup := router.Group("/api")
