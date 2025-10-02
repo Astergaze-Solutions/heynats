@@ -368,6 +368,7 @@ Want to see your profile here? We'd love your contributions! Check out our [Cont
 ### Core Maintainers
 
 - **[@mukezhz](https://github.com/mukezhz)** - Project Lead & Core Developer
+- **[@SushantBabu](https://github.com/SushantBabu97)** - Core Developer
 - **[@Astergaze-Solutions](https://github.com/Astergaze-Solutions)** - Organization & Project Sponsor
 
 *Interested in becoming a maintainer? Contribute regularly and reach out to us!*

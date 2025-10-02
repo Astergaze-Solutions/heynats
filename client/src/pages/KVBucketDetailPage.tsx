@@ -498,9 +498,10 @@ export function KVBucketDetailPage() {
             ) : (
               <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                 <div className="px-6 py-3 border-b border-gray-200 bg-gray-50">
-                  <div className="grid grid-cols-4 gap-4 text-sm font-medium text-gray-500">
+                  <div className="grid grid-cols-5 gap-4 text-sm font-medium text-gray-500">
                     <div>Key</div>
                     <div>Value</div>
+                    <div>Created At</div>
                     <div>Revision</div>
                     <div>Actions</div>
                   </div>
@@ -508,7 +509,7 @@ export function KVBucketDetailPage() {
                 <div className="divide-y divide-gray-200">
                   {filteredKeys.map((entry) => (
                     <div key={entry.key} className="px-6 py-4">
-                      <div className="grid grid-cols-4 gap-4 items-center">
+                      <div className="grid grid-cols-5 gap-4 items-center">
                         <div className="flex items-center space-x-2">
                           <code className="text-sm bg-gray-100 px-2 py-1 rounded">
                             {entry.key}
@@ -554,7 +555,9 @@ export function KVBucketDetailPage() {
                             </div>
                           )}
                         </div>
-                        
+                        <div className="text-sm text-gray-500">
+                          {entry.created}
+                        </div>
                         <div className="text-sm text-gray-500">
                           #{entry.revision}
                         </div>
