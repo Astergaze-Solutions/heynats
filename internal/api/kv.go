@@ -29,6 +29,34 @@ func NewKVAPI(
 	}
 }
 
+func (e *KVAPI) RegisterRoutes() {
+	api := e.router.Group("/kv")
+
+	// list all buckets
+	api.GET("/buckets", e.middleware.RequireConnection(), e.ListBuckets)
+
+	// get bucket detail
+	api.GET("/buckets/:bucket", e.middleware.RequireConnection(), e.GetBucketDetail)
+
+	// create bucket
+	api.POST("/buckets", e.middleware.RequireConnection(), e.CreateBucket)
+
+	// delete bucket
+	api.DELETE("/buckets/:bucket", e.middleware.RequireConnection(), e.DeleteBucket)
+
+	// get bucket keys
+	api.GET("/buckets/:bucket/keys", e.middleware.RequireConnection(), e.GetBucketKeys)
+
+	// put key value in a bucket
+	api.POST("/buckets/:bucket/keys", e.middleware.RequireConnection(), e.PutKeyValue)
+
+	// get key value
+	api.GET("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), e.GetKeyValue)
+
+	// delete key
+	api.DELETE("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), e.DeleteKey)
+}
+
 // ListBuckets handles GET /buckets endpoint
 func (e *KVAPI) ListBuckets(c *gin.Context) {
 	conn, ok := GetNatsCredentialFromContext(c)
@@ -309,33 +337,4 @@ func (e *KVAPI) DeleteKey(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Key deleted", "key": key})
-}
-
-func (e *KVAPI) RegisterRoutes() {
-	api := e.router.Group("/kv")
-
-	// list all buckets
-	api.GET("/buckets", e.middleware.RequireConnection(), e.ListBuckets)
-
-	// get bucket detail
-	api.GET("/buckets/:bucket", e.middleware.RequireConnection(), e.GetBucketDetail)
-
-	// create bucket
-	api.POST("/buckets", e.middleware.RequireConnection(), e.CreateBucket)
-
-	// delete bucket
-	api.DELETE("/buckets/:bucket", e.middleware.RequireConnection(), e.DeleteBucket)
-
-	// get bucket keys
-	api.GET("/buckets/:bucket/keys", e.middleware.RequireConnection(), e.GetBucketKeys)
-
-	// put key value in a bucket
-	api.POST("/buckets/:bucket/keys", e.middleware.RequireConnection(), e.PutKeyValue)
-
-	// get key value
-	api.GET("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), e.GetKeyValue)
-
-	// delete key
-	api.DELETE("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), e.DeleteKey)
-
 }
