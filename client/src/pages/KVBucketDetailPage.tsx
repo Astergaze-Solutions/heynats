@@ -80,7 +80,7 @@ export function KVBucketDetailPage() {
   const deleteKeyMutation = useDeleteKVKey();
   const deleteBucketMutation = useDeleteKVBucket();
 
-  const keys = keysData?.entries || [];
+  const keys = keysData?.items || [];
   
   // Filter keys based on search term
   const filteredKeys = keys.filter(entry =>

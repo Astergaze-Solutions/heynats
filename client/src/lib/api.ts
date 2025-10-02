@@ -256,8 +256,11 @@ export interface KVEntry {
 }
 
 export interface KVEntriesResponse {
-  entries: KVEntry[];
+  items: KVEntry[];
   bucket: string;
+  page: number;
+  pageSize: number;
+  total: number;
 }
 
 // Key-Value API functions
