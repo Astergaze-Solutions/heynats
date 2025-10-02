@@ -29,511 +29,313 @@ func NewKVAPI(
 	}
 }
 
-func GetNatsCredentialFromContext(c *gin.Context) (*pkg.NATSCredential, bool) {
-	val, exists := c.Get(NatsConnectionKey)
-	if !exists {
-		return nil, false
+// ListBuckets handles GET /buckets endpoint
+func (e *KVAPI) ListBuckets(c *gin.Context) {
+	conn, ok := GetNatsCredentialFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+		return
 	}
-	conn, ok := val.(*pkg.NATSCredential)
-	return conn, ok
+
+	manager := pkg.NewKVManager(conn)
+	if manager == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
+		return
+	}
+
+	buckets, err := manager.ListBucketsWithStats()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch KV buckets", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"buckets": buckets})
+}
+
+// GetBucketDetail handles GET /buckets/:bucket endpoint
+func (e *KVAPI) GetBucketDetail(c *gin.Context) {
+	bucketName := c.Param("bucket")
+	if bucketName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid bucket name", "details": "Bucket name should be valid and non-empty"})
+		return
+	}
+
+	conn, ok := GetNatsCredentialFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+		return
+	}
+
+	manager := pkg.NewKVManager(conn)
+	if manager == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
+		return
+	}
+
+	bucket, err := manager.GetBucket(bucketName)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":   "Failed to fetch KV bucket info",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, bucket)
+}
+
+// CreateBucket handles POST /buckets endpoint
+func (e *KVAPI) CreateBucket(c *gin.Context) {
+	conn, ok := GetNatsCredentialFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+		return
+	}
+
+	manager := pkg.NewKVManager(conn)
+	if manager == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
+		return
+	}
+
+	var req struct {
+		Bucket  string `json:"bucket" binding:"required"`
+		History int64  `json:"history"`       // Optional
+		TTL     string `json:"ttl,omitempty"` // Optional, e.g., "60s", "5m"
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	kvConfig := jetstream.KeyValueConfig{
+		Bucket:  req.Bucket,
+		History: uint8(req.History),
+	}
+
+	// Parse TTL string if provided
+	if req.TTL != "" {
+		ttl, err := time.ParseDuration(req.TTL)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "Invalid TTL format",
+				"details": "Use valid Go duration strings like '60s', '5m', '1h30m'",
+			})
+			return
+		}
+		kvConfig.TTL = ttl
+	}
+
+	err := manager.CreateBucket(kvConfig)
+	if err != nil {
+		c.JSON(http.StatusConflict, gin.H{
+			"error":   "Failed to create bucket",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Bucket created successfully",
+		"bucket":  req.Bucket,
+	})
+}
+
+// DeleteBucket handles DELETE /buckets/:bucket endpoint
+func (e *KVAPI) DeleteBucket(c *gin.Context) {
+	bucket := c.Param("bucket")
+	conn, ok := GetNatsCredentialFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+		return
+	}
+
+	manager := pkg.NewKVManager(conn)
+	if manager == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
+		return
+	}
+
+	err := manager.DeleteBucket(bucket)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete bucket", "details": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Bucket deleted", "bucket": bucket})
+}
+
+// GetBucketKeys handles GET /buckets/:bucket/keys endpoint
+func (e *KVAPI) GetBucketKeys(c *gin.Context) {
+	bucket := c.Param("bucket")
+	conn, ok := GetNatsCredentialFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+		return
+	}
+
+	manager := pkg.NewKVManager(conn)
+	if manager == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
+		return
+	}
+
+	// Parse pagination query params
+	page := 0
+	pageSize := 20
+	if p := c.Query("page"); p != "" {
+		if pi, err := strconv.Atoi(p); err == nil && pi >= 0 {
+			page = pi
+		}
+	}
+	if ps := c.Query("pageSize"); ps != "" {
+		if psi, err := strconv.Atoi(ps); err == nil && psi > 0 {
+			pageSize = psi
+		}
+	}
+
+	entries, err := manager.GetBucketKeys(bucket)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to list keys in bucket",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	// Apply pagination
+	start := page * pageSize
+	end := start + pageSize
+	if start >= len(entries) {
+		start = len(entries)
+	}
+	if end > len(entries) {
+		end = len(entries)
+	}
+	pagedEntries := entries[start:end]
+
+	c.JSON(http.StatusOK, gin.H{
+		"bucket":   bucket,
+		"page":     page,
+		"pageSize": pageSize,
+		"total":    len(entries),
+		"items":    pagedEntries,
+	})
+}
+
+// PutKeyValue handles POST /buckets/:bucket/keys endpoint
+func (e *KVAPI) PutKeyValue(c *gin.Context) {
+	bucket := c.Param("bucket")
+	conn, ok := GetNatsCredentialFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+		return
+	}
+
+	manager := pkg.NewKVManager(conn)
+	if manager == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
+		return
+	}
+
+	var req struct {
+		Key   string          `json:"key" binding:"required"`
+		Value json.RawMessage `json:"value" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	rev, err := manager.PutValue(bucket, req.Key, req.Value)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to put value",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Value stored",
+		"revision": rev,
+	})
+}
+
+// GetKeyValue handles GET /buckets/:bucket/keys/:key endpoint
+func (e *KVAPI) GetKeyValue(c *gin.Context) {
+	bucket := c.Param("bucket")
+	key := c.Param("key")
+	conn, ok := GetNatsCredentialFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+		return
+	}
+
+	manager := pkg.NewKVManager(conn)
+	if manager == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
+		return
+	}
+
+	val, err := manager.GetValue(bucket, key)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Key not found or failed", "details": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"key": key, "value": string(val)})
+}
+
+// DeleteKey handles DELETE /buckets/:bucket/keys/:key endpoint
+func (e *KVAPI) DeleteKey(c *gin.Context) {
+	bucket := c.Param("bucket")
+	key := c.Param("key")
+	conn, ok := GetNatsCredentialFromContext(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
+		return
+	}
+
+	manager := pkg.NewKVManager(conn)
+	if manager == nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
+		return
+	}
+
+	err := manager.DeleteKey(bucket, key)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete key", "details": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Key deleted", "key": key})
 }
 
 func (e *KVAPI) RegisterRoutes() {
 	api := e.router.Group("/kv")
 
 	// list all buckets
-	api.GET("/buckets", e.middleware.RequireConnection(), func(c *gin.Context) {
-		conn, ok := GetNatsCredentialFromContext(c)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-			return
-		}
-
-		manager := pkg.NewKVManager(conn)
-		if manager == nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
-			return
-		}
-
-		buckets, err := manager.ListBucketsWithStats()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch KV buckets", "details": err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"buckets": buckets})
-	})
+	api.GET("/buckets", e.middleware.RequireConnection(), e.ListBuckets)
 
 	// get bucket detail
-	api.GET("/buckets/:bucket", e.middleware.RequireConnection(), func(c *gin.Context) {
-		bucketName := c.Param("bucket")
-		if bucketName == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid bucket name", "details": "Bucket name should be valid and non-empty"})
-			return
-		}
-
-		conn, ok := GetNatsCredentialFromContext(c)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-			return
-		}
-
-		manager := pkg.NewKVManager(conn)
-		if manager == nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
-			return
-		}
-
-		bucket, err := manager.GetBucket(bucketName)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{
-				"error":   "Failed to fetch KV bucket info",
-				"details": err.Error(),
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, bucket)
-	})
+	api.GET("/buckets/:bucket", e.middleware.RequireConnection(), e.GetBucketDetail)
 
 	// create bucket
-	api.POST("/buckets", e.middleware.RequireConnection(), func(c *gin.Context) {
-		conn, ok := GetNatsCredentialFromContext(c)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-			return
-		}
-
-		manager := pkg.NewKVManager(conn)
-		if manager == nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
-			return
-		}
-
-		var req struct {
-			Bucket  string `json:"bucket" binding:"required"`
-			History int64  `json:"history"`       // Optional
-			TTL     string `json:"ttl,omitempty"` // Optional, e.g., "60s", "5m"
-		}
-
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		kvConfig := jetstream.KeyValueConfig{
-			Bucket:  req.Bucket,
-			History: uint8(req.History),
-		}
-
-		// Parse TTL string if provided
-		if req.TTL != "" {
-			ttl, err := time.ParseDuration(req.TTL)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error":   "Invalid TTL format",
-					"details": "Use valid Go duration strings like '60s', '5m', '1h30m'",
-				})
-				return
-			}
-			kvConfig.TTL = ttl
-		}
-
-		err := manager.CreateBucket(kvConfig)
-		if err != nil {
-			c.JSON(http.StatusConflict, gin.H{
-				"error":   "Failed to create bucket",
-				"details": err.Error(),
-			})
-			return
-		}
-
-		c.JSON(http.StatusCreated, gin.H{
-			"message": "Bucket created successfully",
-			"bucket":  req.Bucket,
-		})
-	})
+	api.POST("/buckets", e.middleware.RequireConnection(), e.CreateBucket)
 
 	// delete bucket
-	api.DELETE("/buckets/:bucket", e.middleware.RequireConnection(), func(c *gin.Context) {
-		bucket := c.Param("bucket")
-		conn, ok := GetNatsCredentialFromContext(c)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-			return
-		}
-
-		manager := pkg.NewKVManager(conn)
-		if manager == nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
-			return
-		}
-
-		err := manager.DeleteBucket(bucket)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete bucket", "details": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "Bucket deleted", "bucket": bucket})
-	})
+	api.DELETE("/buckets/:bucket", e.middleware.RequireConnection(), e.DeleteBucket)
 
 	// get bucket keys
-	api.GET("/buckets/:bucket/keys", e.middleware.RequireConnection(), func(c *gin.Context) {
-		bucket := c.Param("bucket")
-		conn, ok := GetNatsCredentialFromContext(c)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-			return
-		}
-
-		manager := pkg.NewKVManager(conn)
-		if manager == nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
-			return
-		}
-
-		// Parse pagination query params
-		page := 0
-		pageSize := 20
-		if p := c.Query("page"); p != "" {
-			if pi, err := strconv.Atoi(p); err == nil && pi >= 0 {
-				page = pi
-			}
-		}
-		if ps := c.Query("pageSize"); ps != "" {
-			if psi, err := strconv.Atoi(ps); err == nil && psi > 0 {
-				pageSize = psi
-			}
-		}
-
-		entries, err := manager.GetBucketKeys(bucket)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":   "Failed to list keys in bucket",
-				"details": err.Error(),
-			})
-			return
-		}
-
-		// Apply pagination
-		start := page * pageSize
-		end := start + pageSize
-		if start >= len(entries) {
-			start = len(entries)
-		}
-		if end > len(entries) {
-			end = len(entries)
-		}
-		pagedEntries := entries[start:end]
-
-		c.JSON(http.StatusOK, gin.H{
-			"bucket":   bucket,
-			"page":     page,
-			"pageSize": pageSize,
-			"total":    len(entries),
-			"items":    pagedEntries,
-		})
-	})
+	api.GET("/buckets/:bucket/keys", e.middleware.RequireConnection(), e.GetBucketKeys)
 
 	// put key value in a bucket
-	api.POST("/buckets/:bucket/keys", e.middleware.RequireConnection(), func(c *gin.Context) {
-		bucket := c.Param("bucket")
-		conn, ok := GetNatsCredentialFromContext(c)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-			return
-		}
-
-		manager := pkg.NewKVManager(conn)
-		if manager == nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
-			return
-		}
-
-		var req struct {
-			Key   string          `json:"key" binding:"required"`
-			Value json.RawMessage `json:"value" binding:"required"`
-		}
-
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-
-		rev, err := manager.PutValue(bucket, req.Key, req.Value)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error":   "Failed to put value",
-				"details": err.Error(),
-			})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{
-			"message":  "Value stored",
-			"revision": rev,
-		})
-	})
+	api.POST("/buckets/:bucket/keys", e.middleware.RequireConnection(), e.PutKeyValue)
 
 	// get key value
-	api.GET("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), func(c *gin.Context) {
-		bucket := c.Param("bucket")
-		key := c.Param("key")
-		conn, ok := GetNatsCredentialFromContext(c)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-			return
-		}
-
-		manager := pkg.NewKVManager(conn)
-		if manager == nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
-			return
-		}
-
-		val, err := manager.GetValue(bucket, key)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Key not found or failed", "details": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"key": key, "value": string(val)})
-	})
+	api.GET("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), e.GetKeyValue)
 
 	// delete key
-	api.DELETE("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), func(c *gin.Context) {
-		bucket := c.Param("bucket")
-		key := c.Param("key")
-		conn, ok := GetNatsCredentialFromContext(c)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-			return
-		}
+	api.DELETE("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), e.DeleteKey)
 
-		manager := pkg.NewKVManager(conn)
-		if manager == nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
-			return
-		}
-
-		err := manager.DeleteKey(bucket, key)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete key", "details": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "Key deleted", "key": key})
-	})
-
-	// api.GET("/buckets", e.middleware.RequireConnection(), func(c *gin.Context) {
-	// 	natsConn, exists := c.Get(NatsConnectionKey)
-	// 	if !exists {
-	// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-	// 		return
-	// 	}
-
-	// 	conn := natsConn.(*pkg.NATSCredential)
-	// 	bucketsStats, err := conn.ListBucketsWithStats()
-	// 	if err != nil {
-	// 		c.JSON(http.StatusInternalServerError, gin.H{
-	// 			"error":   "Failed to fetch KV buckets",
-	// 			"details": err.Error(),
-	// 		})
-	// 		return
-	// 	}
-
-	// 	c.JSON(http.StatusOK, gin.H{
-	// 		"buckets": bucketsStats,
-	// 	})
-	// })
-
-	// api.GET("/buckets/:bucket", e.middleware.RequireConnection(), func(c *gin.Context) {
-	// 	bucketName := c.Param("bucket")
-	// 	natsConn, exists := c.Get(NatsConnectionKey)
-	// 	if !exists {
-	// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-	// 		return
-	// 	}
-
-	// 	conn := natsConn.(*pkg.NATSCredential)
-	// 	bucketInfo, err := conn.GetBucket(bucketName)
-	// 	if err != nil {
-	// 		c.JSON(http.StatusInternalServerError, gin.H{
-	// 			"error":   "Failed to fetch KV bucket info",
-	// 			"details": err.Error(),
-	// 		})
-	// 		return
-	// 	}
-
-	// 	c.JSON(http.StatusOK, bucketInfo)
-	// })
-
-	// // create bucket
-	// api.POST("/buckets", e.middleware.RequireConnection(), func(c *gin.Context) {
-	// 	natsConn, exists := c.Get(NatsConnectionKey)
-	// 	if !exists {
-	// 		c.JSON(http.StatusUnauthorized, gin.H{
-	// 			"error": "Not connected to NATS",
-	// 		})
-	// 		return
-	// 	}
-
-	// 	var req struct {
-	// 		Bucket  string `json:"bucket" binding:"required"`
-	// 		History int64  `json:"history"`       // Optional
-	// 		TTL     string `json:"ttl,omitempty"` // Optional, e.g., "60s", "5m"
-	// 	}
-
-	// 	if err := c.ShouldBindJSON(&req); err != nil {
-	// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	// 		return
-	// 	}
-
-	// 	conn := natsConn.(*pkg.NATSCredential)
-	// 	js := *conn.JSConn
-	// 	if js == nil {
-	// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "JetStream not initialized"})
-	// 		return
-	// 	}
-
-	// 	kvConfig := &nats.KeyValueConfig{
-	// 		Bucket:  req.Bucket,
-	// 		History: uint8(req.History),
-	// 	}
-
-	// 	// Parse TTL string if provided
-	// 	if req.TTL != "" {
-	// 		ttl, err := time.ParseDuration(req.TTL)
-	// 		if err != nil {
-	// 			c.JSON(http.StatusBadRequest, gin.H{
-	// 				"error":   "Invalid TTL format",
-	// 				"details": "Use valid Go duration strings like '60s', '5m', '1h30m'",
-	// 			})
-	// 			return
-	// 		}
-	// 		kvConfig.TTL = ttl
-	// 	}
-
-	// 	_, err := js.CreateKeyValue(kvConfig)
-	// 	if err != nil {
-	// 		c.JSON(http.StatusConflict, gin.H{
-	// 			"error":   "Failed to create bucket",
-	// 			"details": err.Error(),
-	// 		})
-	// 		return
-	// 	}
-
-	// 	c.JSON(http.StatusCreated, gin.H{
-	// 		"message": "Bucket created successfully",
-	// 		"bucket":  req.Bucket,
-	// 	})
-	// })
-
-	// // delete buckets
-	// api.DELETE("/buckets/:bucket", e.middleware.RequireConnection(), func(c *gin.Context) {
-	// 	bucket := c.Param("bucket")
-	// 	natsConn, exists := c.Get(NatsConnectionKey)
-	// 	if !exists {
-	// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-	// 		return
-	// 	}
-
-	// 	conn := natsConn.(*pkg.NATSCredential)
-	// 	err := conn.DeleteBucket(bucket)
-	// 	if err != nil {
-	// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete bucket", "details": err.Error()})
-	// 		return
-	// 	}
-	// 	c.JSON(http.StatusOK, gin.H{"message": "Bucket deleted", "bucket": bucket})
-	// })
-
-	// // put key value
-	// api.POST("/buckets/:bucket/keys", e.middleware.RequireConnection(), func(c *gin.Context) {
-	// 	bucket := c.Param("bucket")
-	// 	natsConn, exists := c.Get(NatsConnectionKey)
-	// 	if !exists {
-	// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-	// 		return
-	// 	}
-
-	// 	var req struct {
-	// 		Key   string          `json:"key" binding:"required"`
-	// 		Value json.RawMessage `json:"value" binding:"required"`
-	// 	}
-
-	// 	if err := c.ShouldBindJSON(&req); err != nil {
-	// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-	// 		return
-	// 	}
-
-	// 	conn := natsConn.(*pkg.NATSCredential)
-	// 	rev, err := conn.PutValue(bucket, req.Key, req.Value)
-	// 	if err != nil {
-	// 		c.JSON(http.StatusInternalServerError, gin.H{
-	// 			"error":   "Failed to put value",
-	// 			"details": err.Error(),
-	// 		})
-	// 		return
-	// 	}
-
-	// 	c.JSON(http.StatusOK, gin.H{
-	// 		"message":  "Value stored",
-	// 		"revision": rev,
-	// 	})
-	// })
-
-	// // get bucket key valuse
-	// api.GET("/buckets/:bucket/keys", e.middleware.RequireConnection(), func(c *gin.Context) {
-	// 	bucket := c.Param("bucket")
-	// 	natsConn, exists := c.Get(NatsConnectionKey)
-	// 	if !exists {
-	// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-	// 		return
-	// 	}
-
-	// 	// Pagination query params
-	// 	page := 0
-	// 	pageSize := 20
-	// 	if p := c.Query("page"); p != "" {
-	// 		if pi, err := strconv.Atoi(p); err == nil && pi >= 0 {
-	// 			page = pi
-	// 		}
-	// 	}
-	// 	if ps := c.Query("pageSize"); ps != "" {
-	// 		if psi, err := strconv.Atoi(ps); err == nil && psi > 0 {
-	// 			pageSize = psi
-	// 		}
-	// 	}
-
-	// 	conn := natsConn.(*pkg.NATSCredential)
-	// 	keyVals, err := conn.ListKeyValues(bucket, page, pageSize)
-	// 	if err != nil {
-	// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list key-values", "details": err.Error()})
-	// 		return
-	// 	}
-
-	// 	c.JSON(http.StatusOK, gin.H{
-	// 		"bucket":   bucket,
-	// 		"page":     page,
-	// 		"pageSize": pageSize,
-	// 		"items":    keyVals,
-	// 	})
-	// })
-
-	// // get key value
-	// api.GET("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), func(c *gin.Context) {
-	// 	bucket := c.Param("bucket")
-	// 	key := c.Param("key")
-	// 	natsConn, exists := c.Get(NatsConnectionKey)
-	// 	if !exists {
-	// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
-	// 		return
-	// 	}
-
-	// 	conn := natsConn.(*pkg.NATSCredential)
-	// 	val, err := conn.GetValue(bucket, key)
-	// 	if err != nil {
-	// 		c.JSON(http.StatusNotFound, gin.H{"error": "Key not found or failed", "details": err.Error()})
-	// 		return
-	// 	}
-	// 	c.JSON(http.StatusOK, gin.H{"key": key, "value": string(val)})
-	// })
 }
