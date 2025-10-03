@@ -48,7 +48,7 @@ func (e *KVAPI) RegisterRoutes() {
 	api.GET("/buckets/:bucket/keys", e.middleware.RequireConnection(), e.GetBucketKeys)
 
 	// put key value in a bucket
-	api.POST("/buckets/:bucket/keys", e.middleware.RequireConnection(), e.PutKeyValue)
+	api.PUT("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), e.PutKeyValue)
 
 	// get key value
 	api.GET("/buckets/:bucket/keys/:key", e.middleware.RequireConnection(), e.GetKeyValue)
@@ -254,6 +254,18 @@ func (e *KVAPI) GetBucketKeys(c *gin.Context) {
 // PutKeyValue handles POST /buckets/:bucket/keys endpoint
 func (e *KVAPI) PutKeyValue(c *gin.Context) {
 	bucket := c.Param("bucket")
+	key := c.Param("key")
+
+	if bucket == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing Bucket name"})
+		return
+	}
+
+	if key == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing Key"})
+		return
+	}
+
 	conn, ok := GetNatsCredentialFromContext(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not connected to NATS"})
@@ -267,7 +279,6 @@ func (e *KVAPI) PutKeyValue(c *gin.Context) {
 	}
 
 	var req struct {
-		Key   string          `json:"key" binding:"required"`
 		Value json.RawMessage `json:"value" binding:"required"`
 	}
 
@@ -276,7 +287,7 @@ func (e *KVAPI) PutKeyValue(c *gin.Context) {
 		return
 	}
 
-	rev, err := manager.PutValue(bucket, req.Key, req.Value)
+	rev, err := manager.PutValue(bucket, key, req.Value)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to put value",
