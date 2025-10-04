@@ -287,7 +287,16 @@ func (e *KVAPI) PutKeyValue(c *gin.Context) {
 		return
 	}
 
-	rev, err := manager.PutValue(bucket, key, req.Value)
+	var actual string
+	err := json.Unmarshal(req.Value, &actual)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Data Unmarshal error",
+			"details": err.Error(),
+		})
+		return
+	}
+	rev, err := manager.PutValue(bucket, key, []byte(actual))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to put value",
