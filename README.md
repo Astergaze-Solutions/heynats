@@ -346,6 +346,12 @@ lefthook install
 make dev-full
 ```
 
+### Modern way:
+
+```bash
+docker buildx build --platform linux/amd64,linux/arm64 -t <image-name> --push .
+```
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
