@@ -61,6 +61,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable=${{ github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop' }}
             type=ref,event=tag
+            type=ref,event=branch
             type=semver,pattern={{version}}
 
       - name: Build and push multi-arch image
