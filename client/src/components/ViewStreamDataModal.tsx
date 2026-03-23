@@ -23,8 +23,8 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
     error,
     refetch,
   } = useQuery({
-    queryKey: ["streamMessages", streamName, offset, limit],
-    queryFn: () => streamsApi.getStreamMessages(streamName, offset, limit),
+    queryKey: ["streamMessages", streamName, offset, limit, searchTerm],
+    queryFn: () => streamsApi.getStreamMessages(streamName, offset, limit, searchTerm),
     enabled: isOpen,
   });
 
@@ -39,21 +39,18 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
   const totalPages = Math.ceil(total / limit);
   const currentPage = Math.floor(offset / limit) + 1;
 
-  const filteredMessages = messages.filter(
-    (msg) =>
-      msg.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      msg.data.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  // Server-side search is now handled, no client-side filtering needed
+  const displayMessages = messages;
 
   const handlePreviousPage = () => {
-    if (currentPage > 1) {
-      setOffset((currentPage - 2) * limit);
+    if (offset > 0) {
+      setOffset(offset - 1);
     }
   };
 
   const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setOffset(currentPage * limit);
+    if ((offset + 1) * limit < total) {
+      setOffset(offset + 1);
     }
   };
 
@@ -176,8 +173,8 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
           {/* Pagination Info */}
           <div className="flex items-center justify-between text-sm text-gray-600">
             <span>
-              Page {currentPage} of {totalPages || 1} | Showing {filteredMessages.length} of{" "}
-              {messages.length} messages
+              Page {currentPage} of {totalPages || 1} | Showing {displayMessages.length} of {total}{" "}
+              messages
             </span>
           </div>
         </div>
@@ -237,7 +234,7 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
                 </div>
               </div>
             </div>
-          ) : filteredMessages.length === 0 ? (
+          ) : displayMessages.length === 0 ? (
             <div className="p-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
                 <svg
@@ -264,7 +261,7 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {filteredMessages.map((msg) => (
+              {displayMessages.map((msg) => (
                 <button
                   type="button"
                   key={msg.sequence}

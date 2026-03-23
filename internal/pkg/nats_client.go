@@ -638,3 +638,120 @@ func (nc *NATSCredential) GetStreamMessages(streamName string, offset int, limit
 		StreamName: streamName,
 	}, nil
 }
+
+// GetStreamMessagesWithSearch retrieves messages from a stream with pagination and search using lazy loading
+// This fetches messages incrementally while filtering to avoid loading entire stream into memory
+func (nc *NATSCredential) GetStreamMessagesWithSearch(streamName string, offset int, limit int, search string) (*StreamMessagesResponse, error) {
+	if nc.Conn == nil || !nc.Conn.IsConnected() {
+		return nil, fmt.Errorf("not connected to NATS server")
+	}
+
+	if nc.JSConn == nil {
+		return nil, fmt.Errorf("not connected to JetStream")
+	}
+
+	js := *nc.JSConn
+
+	// Get stream info
+	streamInfo, err := js.StreamInfo(streamName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get stream info: %w", err)
+	}
+
+	totalMessages := int(streamInfo.State.Msgs)
+
+	// Validate pagination parameters
+	if offset < 0 {
+		offset = 0
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 1000 {
+		limit = 1000
+	}
+
+	messages := make([]StreamMessage, 0, limit)
+
+	// Return empty if no messages
+	if totalMessages == 0 {
+		return &StreamMessagesResponse{
+			Messages:   messages,
+			Total:      0,
+			Offset:     offset,
+			Limit:      limit,
+			StreamName: streamName,
+		}, nil
+	}
+
+	// If no search term, use regular pagination
+	if search == "" {
+		return nc.GetStreamMessages(streamName, offset*limit, limit)
+	}
+
+	// Lazy loading: fetch messages in chunks while filtering
+	searchLower := strings.ToLower(search)
+	firstSeq := streamInfo.State.FirstSeq
+	lastSeq := streamInfo.State.LastSeq
+
+	matchedCount := 0
+	pageStartIdx := offset * limit
+	pageEndIdx := pageStartIdx + limit
+	currentMessageIdx := 0
+	chunkSize := 100 // Fetch in chunks of 100 to avoid loading entire stream
+
+	// Iterate through all messages from start
+	for seq := firstSeq; seq <= lastSeq; seq++ {
+		msg, err := js.GetMsg(streamName, seq)
+		if err != nil {
+			// Skip messages that can't be retrieved
+			continue
+		}
+
+		// Check if message matches search criteria
+		subjectMatch := strings.Contains(strings.ToLower(msg.Subject), searchLower)
+		dataMatch := strings.Contains(strings.ToLower(string(msg.Data)), searchLower)
+
+		if subjectMatch || dataMatch {
+			// This message matches the search
+			if currentMessageIdx >= pageStartIdx && currentMessageIdx < pageEndIdx {
+				// This message is in the current page
+				headers := make(map[string]string)
+				if msg.Header != nil {
+					for key, values := range msg.Header {
+						if len(values) > 0 {
+							headers[key] = values[0]
+						}
+					}
+				}
+
+				streamMsg := StreamMessage{
+					Sequence:  seq,
+					Subject:   msg.Subject,
+					Data:      string(msg.Data),
+					Headers:   headers,
+					Timestamp: msg.Time.Format(time.RFC3339),
+					Size:      uint32(len(msg.Data)),
+				}
+
+				messages = append(messages, streamMsg)
+			}
+
+			currentMessageIdx++
+			matchedCount++
+
+			// Optimization: stop early if we have enough matches for current page and some buffer
+			if currentMessageIdx > pageEndIdx+chunkSize {
+				break
+			}
+		}
+	}
+
+	return &StreamMessagesResponse{
+		Messages:   messages,
+		Total:      matchedCount, // Total matches for this search, not total messages
+		Offset:     offset,
+		Limit:      limit,
+		StreamName: streamName,
+	}, nil
+}

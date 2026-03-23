@@ -217,15 +217,23 @@ export const streamsApi = {
   // Get stream details
   getStream: (streamName: string): Promise<Stream> => apiRequest(`/nats/streams/${streamName}`),
 
-  // Get stream messages with pagination
+  // Get stream messages with pagination and search
   getStreamMessages: (
     streamName: string,
     offset?: number,
     limit?: number,
-  ): Promise<StreamMessagesResponse> =>
-    apiRequest(
-      `/nats/streams/${encodeURIComponent(streamName)}/messages?offset=${offset || 0}&limit=${limit || 10}`,
-    ),
+    search?: string,
+  ): Promise<StreamMessagesResponse> => {
+    const params = new URLSearchParams();
+    params.append("offset", String(offset || 0));
+    params.append("limit", String(limit || 10));
+    if (search) {
+      params.append("search", search);
+    }
+    return apiRequest(
+      `/nats/streams/${encodeURIComponent(streamName)}/messages?${params.toString()}`,
+    );
+  },
 
   // Create a new stream
   createStream: (config: Partial<StreamConfig>): Promise<Stream> =>

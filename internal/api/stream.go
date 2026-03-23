@@ -304,8 +304,19 @@ func (e *StreamAPI) GetStreamMessages(c *gin.Context) {
 		}
 	}
 
-	// Get stream messages
-	response, err := conn.GetStreamMessages(streamName, offset, limit)
+	// Get search parameter
+	search := c.Query("search")
+
+	// Get stream messages with search support
+	var response *pkg.StreamMessagesResponse
+	var err error
+
+	if search != "" {
+		response, err = conn.GetStreamMessagesWithSearch(streamName, offset, limit, search)
+	} else {
+		response, err = conn.GetStreamMessages(streamName, offset, limit)
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to get stream messages",
