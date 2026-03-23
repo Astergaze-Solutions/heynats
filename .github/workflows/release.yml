@@ -7,6 +7,10 @@ on:
     types:
       - closed
   push:
+    branches:
+      - main
+      - develop
+      - staging
     tags:
       - "*"
   release:
