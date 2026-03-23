@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/astergaze-solutions/heynats/internal/pkg"
 	"github.com/gin-gonic/gin"
@@ -29,10 +30,13 @@ func NewStreamAPI(
 func (e *StreamAPI) RegisterRoutes() {
 	api := e.router.Group("/streams")
 	api.GET("", e.middleware.RequireConnection(), e.ListStreams)
-	api.GET("/:stream", e.middleware.RequireConnection(), e.GetStreamInfo)
-	api.GET("/consumers/:stream", e.middleware.RequireConnection(), e.ListConsumers)
 	api.POST("", e.middleware.RequireConnection(), e.CreateStream)
+	// More specific routes must come before generic :stream routes
+	api.GET("/:stream/messages", e.middleware.RequireConnection(), e.GetStreamMessages)
 	api.GET("/:stream/subjects/:subject/subscribe", e.middleware.RequireConnection(), e.SubscribeToStreamSubject)
+	api.GET("/consumers/:stream", e.middleware.RequireConnection(), e.ListConsumers)
+	// Generic routes at the end
+	api.GET("/:stream", e.middleware.RequireConnection(), e.GetStreamInfo)
 	api.DELETE("/:stream", e.middleware.RequireConnection(), e.DeleteStream)
 }
 
@@ -273,6 +277,44 @@ func (e *StreamAPI) SubscribeToStreamSubject(c *gin.Context) {
 			}
 		}
 	}
+}
+
+// GetStreamMessages handles GET /streams/:stream/messages endpoint
+func (e *StreamAPI) GetStreamMessages(c *gin.Context) {
+	conn, ok := e.GetConnection(c)
+	if !ok {
+		return
+	}
+
+	streamName := c.Param("stream")
+
+	// Get query parameters for pagination
+	offset := 0
+	limit := 10
+
+	if offsetStr := c.Query("offset"); offsetStr != "" {
+		if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
+			offset = val
+		}
+	}
+
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if val, err := strconv.Atoi(limitStr); err == nil && val > 0 {
+			limit = val
+		}
+	}
+
+	// Get stream messages
+	response, err := conn.GetStreamMessages(streamName, offset, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to get stream messages",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // DeleteStream handles DELETE /streams/:stream endpoint

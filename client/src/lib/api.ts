@@ -87,23 +87,23 @@ export interface AccountInfo {
   stats: ConnectionLimits; // Same structure as connection_limits
 }
 
-const API_BASE = '/api';
+const API_BASE = "/api";
 
 class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public details?: string
+    public details?: string,
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
 async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
     ...options,
@@ -112,11 +112,7 @@ async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T
   const data = await response.json();
 
   if (!response.ok) {
-    throw new ApiError(
-      data.error || 'An error occurred',
-      response.status,
-      data.details
-    );
+    throw new ApiError(data.error || "An error occurred", response.status, data.details);
   }
 
   return data;
@@ -125,29 +121,26 @@ async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T
 // NATS API functions
 export const natsApi = {
   // Check connection status
-  getStatus: (): Promise<ConnectionStatus> =>
-    apiRequest('/nats/status'),
+  getStatus: (): Promise<ConnectionStatus> => apiRequest("/nats/status"),
 
   // Connect to NATS server
   connect: (credentials: ConnectionCredentials): Promise<{ message: string; connected: boolean }> =>
-    apiRequest('/nats/connect', {
-      method: 'POST',
+    apiRequest("/nats/connect", {
+      method: "POST",
       body: JSON.stringify(credentials),
     }),
 
   // Disconnect from NATS server
   disconnect: (): Promise<{ message: string; connected: boolean }> =>
-    apiRequest('/nats/disconnect', {
-      method: 'POST',
+    apiRequest("/nats/disconnect", {
+      method: "POST",
     }),
 
   // Get NATS server info
-  getInfo: (): Promise<NATSInfo> =>
-    apiRequest('/nats/info'),
+  getInfo: (): Promise<NATSInfo> => apiRequest("/nats/info"),
 
   // Get account information
-  getAccountInfo: (): Promise<AccountInfo> =>
-    apiRequest('/nats/account'),
+  getAccountInfo: (): Promise<AccountInfo> => apiRequest("/nats/account"),
 };
 
 // JetStream Stream interfaces
@@ -198,27 +191,53 @@ export interface StreamsResponse {
   total: number;
 }
 
+// Stream Message interfaces
+export interface StreamMessage {
+  sequence: number;
+  subject: string;
+  data: string;
+  headers?: Record<string, string>;
+  timestamp: string;
+  size: number;
+}
+
+export interface StreamMessagesResponse {
+  messages: StreamMessage[];
+  total: number;
+  offset: number;
+  limit: number;
+  stream_name: string;
+}
+
 // Streams API functions
 export const streamsApi = {
   // Get all streams
-  getStreams: (): Promise<StreamsResponse> =>
-    apiRequest('/nats/streams'),
+  getStreams: (): Promise<StreamsResponse> => apiRequest("/nats/streams"),
 
   // Get stream details
-  getStream: (streamName: string): Promise<Stream> =>
-    apiRequest(`/nats/streams/${streamName}`),
+  getStream: (streamName: string): Promise<Stream> => apiRequest(`/nats/streams/${streamName}`),
+
+  // Get stream messages with pagination
+  getStreamMessages: (
+    streamName: string,
+    offset?: number,
+    limit?: number,
+  ): Promise<StreamMessagesResponse> =>
+    apiRequest(
+      `/nats/streams/${encodeURIComponent(streamName)}/messages?offset=${offset || 0}&limit=${limit || 10}`,
+    ),
 
   // Create a new stream
   createStream: (config: Partial<StreamConfig>): Promise<Stream> =>
-    apiRequest('/nats/streams', {
-      method: 'POST',
+    apiRequest("/nats/streams", {
+      method: "POST",
       body: JSON.stringify(config),
     }),
 
   // Delete a stream
   deleteStream: (streamName: string): Promise<{ message: string }> =>
     apiRequest(`/nats/streams/${streamName}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
 };
 
@@ -266,13 +285,12 @@ export interface KVEntriesResponse {
 // Key-Value API functions
 export const kvApi = {
   // Get all KV buckets
-  getBuckets: (): Promise<KVBucketsResponse> =>
-    apiRequest('/nats/kv/buckets'),
+  getBuckets: (): Promise<KVBucketsResponse> => apiRequest("/nats/kv/buckets"),
 
   // Create a new KV bucket
   createBucket: (config: CreateBucketRequest): Promise<CreateBucketResponse> =>
-    apiRequest('/nats/kv/bucket', {
-      method: 'POST',
+    apiRequest("/nats/kv/bucket", {
+      method: "POST",
       body: JSON.stringify(config),
     }),
 
@@ -283,7 +301,7 @@ export const kvApi = {
   // Delete a bucket (placeholder - will need backend implementation)
   deleteBucket: (bucketName: string): Promise<{ message: string }> =>
     apiRequest(`/nats/kv/buckets/${bucketName}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
 
   // Get all keys in a bucket (placeholder - will need backend implementation)
@@ -297,14 +315,14 @@ export const kvApi = {
   // Set a key value (placeholder - will need backend implementation)
   setKey: (bucketName: string, key: string, value: string): Promise<KVEntry> =>
     apiRequest(`/nats/kv/buckets/${bucketName}/keys/${key}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({ value }),
     }),
 
   // Delete a key (placeholder - will need backend implementation)
   deleteKey: (bucketName: string, key: string): Promise<{ message: string }> =>
     apiRequest(`/nats/kv/buckets/${bucketName}/keys/${key}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
 };
 
@@ -362,28 +380,27 @@ export interface RequestReplyResponse {
 export const publishApi = {
   // Publish a single message
   publishMessage: (request: PublishRequest): Promise<PublishResponse> =>
-    apiRequest('/nats/publish/message', {
-      method: 'POST',
+    apiRequest("/nats/publish/message", {
+      method: "POST",
       body: JSON.stringify(request),
     }),
 
   // Publish multiple messages in batch
   publishBatch: (request: BatchPublishRequest): Promise<BatchPublishResponse> =>
-    apiRequest('/nats/publish/batch', {
-      method: 'POST',
+    apiRequest("/nats/publish/batch", {
+      method: "POST",
       body: JSON.stringify(request),
     }),
 
   // Send request and wait for reply
   requestReply: (request: RequestReplyRequest): Promise<RequestReplyResponse> =>
-    apiRequest('/nats/publish/request', {
-      method: 'POST',
+    apiRequest("/nats/publish/request", {
+      method: "POST",
       body: JSON.stringify(request),
     }),
 
   // Get subject suggestions
-  getSubjects: (): Promise<{ subjects: string[] }> =>
-    apiRequest('/nats/publish/subjects'),
+  getSubjects: (): Promise<{ subjects: string[] }> => apiRequest("/nats/publish/subjects"),
 };
 
 // Subscribe API interfaces
@@ -391,7 +408,7 @@ export interface SubscribeRequest {
   subject: string;
   queue_group?: string;
   max_messages?: number;
-  subscription_type?: 'regular' | 'queue' | 'reply' | 'request-handler';
+  subscription_type?: "regular" | "queue" | "reply" | "request-handler";
   auto_reply?: boolean;
   reply_template?: string;
 }
@@ -407,21 +424,23 @@ export interface ReplyMessage {
 // Subscribe API
 export const subscribeApi = {
   // Get subject suggestions for autocomplete
-  getSubjects: (): Promise<{ subjects: string[] }> =>
-    apiRequest('/nats/subscribe/subjects'),
+  getSubjects: (): Promise<{ subjects: string[] }> => apiRequest("/nats/subscribe/subjects"),
 
-  // Send reply to a request message  
-  sendReply: (replySubject: string, data: string, headers?: Record<string, string>): Promise<{ success: boolean }> =>
-    apiRequest('/nats/subscribe/reply', {
-      method: 'POST',
+  // Send reply to a request message
+  sendReply: (
+    replySubject: string,
+    data: string,
+    headers?: Record<string, string>,
+  ): Promise<{ success: boolean }> =>
+    apiRequest("/nats/subscribe/reply", {
+      method: "POST",
       body: JSON.stringify({ reply_subject: replySubject, data, headers }),
     }),
 };
 
 // Health check API
 export const healthApi = {
-  getHealth: (): Promise<{ status: string; server: string }> =>
-    apiRequest('/health'),
+  getHealth: (): Promise<{ status: string; server: string }> => apiRequest("/health"),
 };
 
 export { ApiError };
