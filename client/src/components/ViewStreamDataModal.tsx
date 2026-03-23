@@ -4,6 +4,7 @@ import { streamsApi } from "../lib/api";
 import type { StreamMessage } from "../lib/api";
 import { Button } from "./ui/button";
 import { formatTimestamp } from "../lib/utils";
+import { ChevronDown, ChevronRight, Copy } from "lucide-react";
 
 interface ViewStreamDataModalProps {
   streamName: string;
@@ -11,11 +12,440 @@ interface ViewStreamDataModalProps {
   onClose: () => void;
 }
 
+// Utility functions
+function formatJSON(data: string): string {
+  try {
+    const parsed = JSON.parse(data);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return data;
+  }
+}
+
+function isValidJSON(data: string): boolean {
+  try {
+    JSON.parse(data);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// JSON Recursive Node Component
+interface JsonNodeProps {
+  name?: string;
+  value: unknown;
+  isLast: boolean;
+  defaultExpanded?: boolean;
+}
+
+function JsonNode({ name, value, isLast, defaultExpanded = false }: JsonNodeProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  // Helper to render property key
+  const renderKey = () => {
+    if (!name) return null;
+    return (
+      <span className="mr-1">
+        <span className="text-purple-600">"{name}"</span>
+        <span className="text-gray-600">:</span>
+      </span>
+    );
+  };
+
+  // Helper to render trailing comma
+  const renderComma = () => {
+    if (!isLast) return <span className="text-gray-600">,</span>;
+    return null;
+  };
+
+  if (value === null) {
+    return (
+      <div className="font-mono text-sm leading-6">
+        {renderKey()}
+        <span className="text-gray-500">null</span>
+        {renderComma()}
+      </div>
+    );
+  }
+
+  if (typeof value === "boolean") {
+    return (
+      <div className="font-mono text-sm leading-6">
+        {renderKey()}
+        <span className="text-orange-600">{value.toString()}</span>
+        {renderComma()}
+      </div>
+    );
+  }
+
+  if (typeof value === "number") {
+    return (
+      <div className="font-mono text-sm leading-6">
+        {renderKey()}
+        <span className="text-blue-600">{value}</span>
+        {renderComma()}
+      </div>
+    );
+  }
+
+  if (typeof value === "string") {
+    return (
+      <div className="font-mono text-sm leading-6">
+        {renderKey()}
+        <span className="text-green-600">"{value}"</span>
+        {renderComma()}
+      </div>
+    );
+  }
+
+  // Arrays and Objects
+  if (typeof value === "object") {
+    const isArray = Array.isArray(value);
+    const keys = Object.keys(value as object);
+    const isEmpty = keys.length === 0;
+    const openChar = isArray ? "[" : "{";
+    const closeChar = isArray ? "]" : "}";
+    const itemCount = keys.length;
+
+    if (isEmpty) {
+      return (
+        <div className="font-mono text-sm leading-6">
+          {renderKey()}
+          <span className="text-gray-600">
+            {openChar}
+            {closeChar}
+          </span>
+          {renderComma()}
+        </div>
+      );
+    }
+
+    return (
+      <div className="font-mono text-sm leading-6">
+        <div className="flex items-start">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded(!expanded);
+            }}
+            className="mr-1 mt-1 p-0.5 hover:bg-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-gray-300"
+          >
+            {expanded ? (
+              <ChevronDown className="w-3 h-3 text-gray-500" />
+            ) : (
+              <ChevronRight className="w-3 h-3 text-gray-500" />
+            )}
+          </button>
+
+          <div className="flex-1">
+            <span>
+              {renderKey()}
+              <span className="text-gray-600">{openChar}</span>
+            </span>
+
+            {!expanded && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setExpanded(true)}
+                  className="px-1 text-gray-400 hover:text-gray-600 text-xs bg-gray-50 rounded mx-1"
+                >
+                  {itemCount} {itemCount === 1 ? "item" : "items"}
+                </button>
+                <span className="text-gray-600">{closeChar}</span>
+                {renderComma()}
+              </>
+            )}
+          </div>
+        </div>
+
+        {expanded && (
+          <div>
+            <div className="pl-6 border-l border-gray-200 ml-2.5">
+              {keys.map((key, index) => (
+                <JsonNode
+                  key={key}
+                  name={isArray ? undefined : key}
+                  value={(value as Record<string, unknown>)[key]}
+                  isLast={index === keys.length - 1}
+                  defaultExpanded={false}
+                />
+              ))}
+            </div>
+            <div className="ml-5">
+              <span className="text-gray-600">{closeChar}</span>
+              {renderComma()}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="font-mono text-sm leading-6">
+      {renderKey()}
+      <span className="text-gray-800">{String(value)}</span>
+      {renderComma()}
+    </div>
+  );
+}
+
+// JSON Viewer Component
+function JsonViewer({ data }: { data: unknown }) {
+  // We can treat the root as a "value" with no name and isLast=true
+  return (
+    <div className="w-full">
+      <JsonNode value={data} isLast={true} defaultExpanded={true} />
+    </div>
+  );
+}
+
+// Code Display Component with Copy
+interface CodeDisplayProps {
+  code: string;
+  maxHeight?: string;
+}
+
+function CodeDisplay({ code, maxHeight = "max-h-64" }: CodeDisplayProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={handleCopy}
+        className="absolute top-2 right-2 p-2 bg-gray-200 hover:bg-gray-300 rounded transition-colors z-10"
+        title="Copy to clipboard"
+        type="button"
+      >
+        <Copy className="w-4 h-4" />
+      </button>
+      {copied && (
+        <div className="absolute top-2 right-12 px-2 py-1 bg-green-500 text-white text-xs rounded">
+          Copied!
+        </div>
+      )}
+      <pre
+        className={`p-3 bg-gray-900 text-gray-100 rounded border border-gray-700 font-mono text-sm overflow-auto ${maxHeight}`}
+      >
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
+// Message Detail Modal
+interface MessageDetailModalProps {
+  message: StreamMessage | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function MessageDetailModal({ message, isOpen, onClose }: MessageDetailModalProps) {
+  const [viewMode, setViewMode] = useState<"formatted" | "raw">("formatted");
+
+  if (!isOpen || !message) return null;
+
+  const isMessageJSON = isValidJSON(message.data);
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">
+              Message Details - Sequence #{message.sequence}
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">{message.subject}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+            aria-label="Close modal"
+          >
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6 space-y-6">
+          {/* Subject */}
+          <div>
+            <label
+              htmlFor="detail-subject"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Subject
+            </label>
+            <div
+              id="detail-subject"
+              className="p-3 bg-gray-50 rounded border border-gray-300 font-mono text-sm break-all"
+            >
+              {message.subject}
+            </div>
+          </div>
+
+          {/* Data Payload */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="detail-data" className="block text-sm font-medium text-gray-700">
+                Data Payload
+                {isMessageJSON && (
+                  <span className="ml-2 text-xs font-normal text-green-600">(JSON)</span>
+                )}
+              </label>
+              {isMessageJSON && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setViewMode("formatted")}
+                    className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                      viewMode === "formatted"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                    type="button"
+                  >
+                    Formatted
+                  </button>
+                  <button
+                    onClick={() => setViewMode("raw")}
+                    className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                      viewMode === "raw"
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                    type="button"
+                  >
+                    Raw
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div id="detail-data">
+              {viewMode === "formatted" && isMessageJSON ? (
+                <div className="p-4 bg-gray-50 rounded border border-gray-300 overflow-auto max-h-96">
+                  <JsonViewer data={JSON.parse(message.data)} />
+                </div>
+              ) : (
+                <CodeDisplay
+                  code={isMessageJSON ? formatJSON(message.data) : message.data}
+                  maxHeight="max-h-96"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Metadata Grid */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label
+                htmlFor="detail-sequence"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Sequence
+              </label>
+              <div
+                id="detail-sequence"
+                className="p-3 bg-gray-50 rounded border border-gray-300 text-sm font-mono"
+              >
+                {message.sequence}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="detail-size" className="block text-sm font-medium text-gray-700 mb-2">
+                Size
+              </label>
+              <div
+                id="detail-size"
+                className="p-3 bg-gray-50 rounded border border-gray-300 text-sm font-mono"
+              >
+                {message.size} bytes
+              </div>
+            </div>
+            <div>
+              <label
+                htmlFor="detail-timestamp"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Timestamp
+              </label>
+              <div
+                id="detail-timestamp"
+                className="p-3 bg-gray-50 rounded border border-gray-300 text-sm font-mono"
+              >
+                {formatTimestamp(message.timestamp)}
+              </div>
+            </div>
+          </div>
+
+          {/* Headers */}
+          {message.headers && Object.keys(message.headers).length > 0 && (
+            <div>
+              <label
+                htmlFor="detail-headers"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Headers ({Object.keys(message.headers).length})
+              </label>
+              <div
+                id="detail-headers"
+                className="p-3 bg-gray-50 rounded border border-gray-300 space-y-2 max-h-48 overflow-auto"
+              >
+                {Object.entries(message.headers).map(([key, value]) => (
+                  <div key={key} className="text-sm border-b border-gray-200 pb-2 last:border-b-0">
+                    <span className="font-medium text-gray-700">{key}</span>
+                    <span className="text-gray-500 mx-2">:</span>
+                    <span className="text-gray-600 break-all">
+                      {Array.isArray(value) ? value.join(", ") : String(value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 p-4 bg-gray-50 flex justify-end">
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamDataModalProps) {
   const [offset, setOffset] = useState(0);
   const [limit, setLimit] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMessage, setSelectedMessage] = useState<StreamMessage | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const {
     data: messagesData,
@@ -24,43 +454,56 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
     refetch,
   } = useQuery({
     queryKey: ["streamMessages", streamName, offset, limit, searchTerm],
-    queryFn: () => streamsApi.getStreamMessages(streamName, offset, limit, searchTerm),
+    queryFn: () => streamsApi.getStreamMessages(streamName, offset * limit, limit, searchTerm),
     enabled: isOpen,
   });
 
   useEffect(() => {
-    setOffset(0);
-  }, []);
+    // Reset offset when modal opens
+    if (isOpen) {
+      setOffset(0);
+    }
+  }, [isOpen]);
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setOffset(0); // Reset pagination on search
+  };
 
   if (!isOpen) return null;
 
   const messages = messagesData?.messages || [];
   const total = messagesData?.total || 0;
   const totalPages = Math.ceil(total / limit);
-  const currentPage = Math.floor(offset / limit) + 1;
-
-  // Server-side search is now handled, no client-side filtering needed
-  const displayMessages = messages;
+  const currentPage = offset + 1;
 
   const handlePreviousPage = () => {
     if (offset > 0) {
       setOffset(offset - 1);
+      setSelectedMessage(null);
     }
   };
 
   const handleNextPage = () => {
-    if ((offset + 1) * limit < total) {
+    if (offset + 1 < totalPages) {
       setOffset(offset + 1);
+      setSelectedMessage(null);
     }
   };
 
   const handleLimitChange = (newLimit: number) => {
     setLimit(newLimit);
     setOffset(0);
+    setSelectedMessage(null);
+  };
+
+  const handleMessageClick = (msg: StreamMessage) => {
+    setSelectedMessage(msg);
+    setIsDetailModalOpen(true);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-40">
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -120,7 +563,7 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
                   className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Search by subject or data..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   aria-label="Search messages"
                 />
               </div>
@@ -173,7 +616,7 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
           {/* Pagination Info */}
           <div className="flex items-center justify-between text-sm text-gray-600">
             <span>
-              Page {currentPage} of {totalPages || 1} | Showing {displayMessages.length} of {total}{" "}
+              Page {currentPage} of {totalPages || 1} | Showing {messages.length} of {total}{" "}
               messages
             </span>
           </div>
@@ -234,7 +677,7 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
                 </div>
               </div>
             </div>
-          ) : displayMessages.length === 0 ? (
+          ) : messages.length === 0 ? (
             <div className="p-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-8 text-center">
                 <svg
@@ -261,17 +704,17 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
             </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {displayMessages.map((msg) => (
+              {messages.map((msg) => (
                 <button
                   type="button"
                   key={msg.sequence}
-                  onClick={() => setSelectedMessage(msg)}
+                  onClick={() => handleMessageClick(msg)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
-                      setSelectedMessage(msg);
+                      handleMessageClick(msg);
                     }
                   }}
-                  className="w-full p-4 hover:bg-gray-50 cursor-pointer transition-colors text-left"
+                  className="w-full p-4 hover:bg-blue-50 cursor-pointer transition-colors text-left"
                   aria-label={`Message ${msg.sequence} from ${msg.subject}`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -318,14 +761,15 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
         {total > 0 && !isLoading && (
           <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
             <div className="text-sm text-gray-600">
-              Showing {offset + 1} to {Math.min(offset + limit, total)} of {total} messages
+              Showing {offset * limit + 1} to {Math.min((offset + 1) * limit, total)} of {total}{" "}
+              messages
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handlePreviousPage}
-                disabled={currentPage === 1 || isLoading}
+                disabled={offset === 0 || isLoading}
                 aria-label="Previous page"
               >
                 <svg
@@ -351,7 +795,7 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
                 variant="outline"
                 size="sm"
                 onClick={handleNextPage}
-                disabled={currentPage >= totalPages || isLoading}
+                disabled={offset + 1 >= totalPages || isLoading}
                 aria-label="Next page"
               >
                 Next
@@ -373,117 +817,14 @@ export function ViewStreamDataModal({ streamName, isOpen, onClose }: ViewStreamD
             </div>
           </div>
         )}
-
-        {/* Message Detail Panel */}
-        {selectedMessage && (
-          <div className="border-t border-gray-200 bg-gray-50 p-4 max-h-48 overflow-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Message Details</h3>
-              <button
-                type="button"
-                onClick={() => setSelectedMessage(null)}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Close message details"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="detail-subject"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Subject
-                </label>
-                <div
-                  id="detail-subject"
-                  className="p-2 bg-white rounded border border-gray-300 font-mono text-sm break-all"
-                >
-                  {selectedMessage.subject}
-                </div>
-              </div>
-              <div>
-                <label
-                  htmlFor="detail-data"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Data
-                </label>
-                <div
-                  id="detail-data"
-                  className="p-2 bg-white rounded border border-gray-300 font-mono text-sm break-all max-h-24 overflow-auto"
-                >
-                  {selectedMessage.data}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="detail-sequence"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Sequence
-                  </label>
-                  <div
-                    id="detail-sequence"
-                    className="p-2 bg-white rounded border border-gray-300 text-sm"
-                  >
-                    {selectedMessage.sequence}
-                  </div>
-                </div>
-                <div>
-                  <label
-                    htmlFor="detail-timestamp"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Timestamp
-                  </label>
-                  <div
-                    id="detail-timestamp"
-                    className="p-2 bg-white rounded border border-gray-300 text-sm"
-                  >
-                    {formatTimestamp(selectedMessage.timestamp)}
-                  </div>
-                </div>
-              </div>
-              {selectedMessage.headers && Object.keys(selectedMessage.headers).length > 0 && (
-                <div>
-                  <label
-                    htmlFor="detail-headers"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Headers
-                  </label>
-                  <div
-                    id="detail-headers"
-                    className="p-2 bg-white rounded border border-gray-300 text-sm space-y-1 max-h-20 overflow-auto"
-                  >
-                    {Object.entries(selectedMessage.headers).map(([key, value]) => (
-                      <div key={key} className="text-xs">
-                        <span className="font-medium">{key}:</span> {value}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Message Detail Modal */}
+      <MessageDetailModal
+        message={selectedMessage}
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+      />
     </div>
   );
 }
