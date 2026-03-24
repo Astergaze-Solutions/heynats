@@ -9,7 +9,8 @@ RUN pnpm build
 FROM golang:1.24.7-alpine3.22 AS server-builder
 WORKDIR /app
 ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+ARG TARGETARCH
+RUN echo "Building for $TARGETARCH"
 
 COPY go.mod go.sum ./
 RUN go mod download
